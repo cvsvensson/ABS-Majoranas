@@ -1,56 +1,51 @@
 using DrWatson
 @quickactivate "ABS-Majoranas"
-using QuantumDots, LinearAlgebra, QuantumDots.BlockDiagonals#, Base.Threads#, QuantumDots.BlockDiagonals
-using BlackBoxOptim, LinearSolve
-using Folds
-using ForwardDiff
-const N = 2
-const c = FermionBasis((1, 2), (:↑, :↓); qn=QuantumDots.parity)
 includet(srcdir("abs_chain_misc.jl"))
+includet(srcdir("plotting.jl"))
 
 ## Example
 fixedparams = (; U=2, V=0.01, Δ=1, tratio=0.2, t=0.5)
 opt = Optimizer(
-    hamfunc=(t, ϕ, μ1, μ2, h) -> abs_hamiltonian(c; μ=[μ1, μ2], t, ϕ, h, fixedparams...),
+    hamfunc=(t, ϕ, μ1, μ2, h) -> abs_hamiltonian(c; μ1, μ2, t, ϕ, h, fixedparams...),
     ranges=[(0.1, 10.0) .* fixedparams.Δ, (0.0, 2.0π), (0.0, 20.0) .* fixedparams.Δ, (-20.0, 0.0) .* fixedparams.Δ, (1.0, 20.0) .* fixedparams.Δ],
     initials=[1, π, -fixedparams.Δ, fixedparams.Δ, fixedparams.tratio^-1 * fixedparams.Δ];
     MaxTime=10, minexcgap=fixedparams.Δ / 4,
     exps=collect(range(1, 6, length=4)),
     tracemode=:compact,
-    target=MPU())
+    target=LD())
 ss = get_sweet_spot(opt)
-optsol = solve(opt.hamfunc(ss...); transport=Transport(QuantumDots.Pauli(), (; T=1, μ=(0.1, 0.2), Γ=1)))
-csdata = charge_stability_scan(merge(fixedparams, NamedTuple(zip((:t, :ϕ, :h), ss[[1,2,5]])), (;μ=ss[[3,4]])))
+optsol = solve(opt.hamfunc(ss...); transport)
+csdata = charge_stability_scan(merge(fixedparams, NamedTuple(zip((:t, :ϕ, :μ1, :μ2, :h), ss))), 5, 5)
+plot_charge_stability(csdata)[1]
+
 
 ##
 
 x = 0:5
 y = range(0, 0.5, 5)
-@time res = sweet_spot_scan((x, :U), (y, :V); fixedparams, MaxTime=2, target=LD());
+@time res = sweet_spot_scan((x, :U), (y, :V); fixedparams = (; Δ=1, tratio=0.2, t=0.5, h=1.5), MaxTime=2, target=LD());
+ssfig, _, _ = plot_sweet_scan(res)
+display(ssfig)
 
-data = charge_stability_scan(range(-5, 5, 40), range(-5, 5, 40); fixedparams..., ϕ=1.5, U=0, V=0);
+transport = Transport(QuantumDots.Pauli(), (; T=1 / 40, μ=(0.0, 0.0)))
+@time csdata = charge_stability_scan((; fixedparams..., ϕ=0.6, U=0, V=0, μ1=0, μ2=0, h=1.5), 8, 8, 200; transport);
+csfig, ax, hm = plot_charge_stability(csdata; colorrange=0.1)
+display(csfig)
 
-##
-function get_sweet_spot(; Δ, tratio, h, U, V, t, MaxTime, exps=collect(range(0.5, 3, length=4)), target=LD())
-    fixedparams = (; Δ, tratio, h, U, V, t)
-    pk = kitaev_sweet_spot2(; Δ, h, U, V, t, tratio)
-    hamfunc(ϕ, μ1, μ2) = abs_hamiltonian(c; μ=[μ1, μ2], ϕ, fixedparams...)
-    hamfunc(ϕ, μ) = abs_hamiltonian(c; μ, ϕ, fixedparams...)
-    opt = Optimizer(;
-        hamfunc,
-        ranges=[(0.0, 1.0π), (0.0, 1.1 * pk.μ[1] + h + U), (-2h - U, U + V)],
-        initials=Float64.([pk.ϕ, pk.μ...]),
-        MaxTime, exps, target,
-        refinefactor=(0.9, :hard_limit),
-        tracemode=:silent,
-        extra_cost=((θ, μ1, μ2), e) -> exp(-(e * abs(μ1 - μ2) + 1)^4))
-    ss = get_sweet_spot(opt)
-    optsol = solve(opt.hamfunc(ss...))
-    parameters = merge(fixedparams, (; ϕ=ss[1], μ=(ss[2], ss[3])))
-    optimization = opt
-    sweet_spot = merge(optsol, (; parameters, optimization))
-    return sweet_spot
-end
+#Plot the non-local conductance
+nlcondfig , _, _ = plot_charge_stability(csdata; datamap=x -> real(x.conductance[1, 2]), colormap=:vik, colorrange=2)
+display(nlcondfig)
+
+
+##Zoomed in charge-stability
+@time csdata = charge_stability_scan((; fixedparams..., ϕ=2.9, U=4, V=0, μ1=-1.1, μ2=1.1+3.5, h=.5), 3, 3, 100; transport);
+csfig, ax, hm = plot_charge_stability(csdata; colorrange=0.05)
+display(csfig)
+nlcondfig , _, _ = plot_charge_stability(csdata; datamap=x -> real(x.conductance[1, 2]), colormap=:vik, colorrange=2)
+display(nlcondfig)
+parityfig , _, _ = plot_charge_stability(csdata; datamap=x -> sign(x.gap), colormap=:vik, colorrange=2)
+display(parityfig)
+
 ##
 MaxTime = 30
 # non_int_sweet_spots = Vector{Any}(undef,N_ss)

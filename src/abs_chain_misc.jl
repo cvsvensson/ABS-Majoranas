@@ -1,9 +1,17 @@
-abs_hamiltonian(c; μ, Δ, t, tratio, h, ϕ, U, V) = blockdiagonal((QuantumDots.BD1_hamiltonian(c; h, t, μ, Δ=Δ * [exp(1im * ϕ / 2), exp(-1im * ϕ / 2)], Δ1=0, θ=parameter(2atan(tratio), :diff), ϕ=0, U, V)), c)
+using QuantumDots, QuantumDots.BlockDiagonals, LinearAlgebra
+using BlackBoxOptim # For optimizing 
+using Folds # For multithreading
+using ForwardDiff, LinearSolve # For transport
+
+const N = 2
+const c = FermionBasis((1, 2), (:↑, :↓); qn=QuantumDots.parity)
+abs_hamiltonian(c; μ1, μ2, Δ, t, tratio, h, ϕ, U, V) = blockdiagonal((QuantumDots.BD1_hamiltonian(c; h, t, μ=(μ1, μ2), Δ=Δ * [exp(1im * ϕ / 2), exp(-1im * ϕ / 2)], Δ1=0, θ=parameter(2atan(tratio), :diff), ϕ=0, U, V)), c)
 
 cost_function(energies, reduced::Number; exp=12.0, minexcgap=0) = cost_reduced(reduced) + cost_energy(energies; exp, minexcgap)
 cost_energy(energies; minexcgap=0, exp) = cost_gapratio(gapratio(energies...); exp) + ((excgap(energies...) - minexcgap) < 0 ? 1 + abs(excgap(energies...) - minexcgap) : 0)
 cost_gapratio(gr; exp) = abs(gr) > 2 * 10.0^(-exp) ? 1.0 + 10^(exp) * abs2(gr) : abs2(gr)
-cost_reduced(reduced) = reduced^2# + 10^3*sqrt(maxreduced)*reduced*(1 + sign(reduced-maxreduced))
+cost_reduced(reduced) = reduced^2
+
 refine_interval((a, b), newmid, α::Number) = refine_interval((a, b), newmid, (α, :hard_limit))
 function refine_interval((a, b), newmid, (α, s)::Tuple{Number,Symbol})
     if s == :hard_limit
@@ -14,6 +22,13 @@ function refine_interval((a, b), newmid, (α, s)::Tuple{Number,Symbol})
         return (newmid - r, newmid + r)
     else
         error("Option $s not supported. Supported options are :hard_limit and :soft_limit.")
+    end
+end
+function expand_searchrange(range, init::Number)
+    if first(range) < init < last(range)
+        return range
+    else
+        return range .+ init .- sum(range) / 2
     end
 end
 
@@ -63,13 +78,6 @@ function gapratio(oddvals, evenvals)
     δE = first(oddvals) - first(evenvals)
     Δ = min(oddvals[2], evenvals[2]) - min(first(oddvals), first(evenvals))
     return δE / Δ
-end
-function expand_searchrange(range, init::Number)
-    if first(range) < init < last(range)
-        return range
-    else
-        return range .+ init .- sum(range) / 2
-    end
 end
 excgap(odd, even) = min(odd[2] - odd[1], even[2] - even[1])
 
@@ -123,16 +131,36 @@ function get_sweet_spot(opt::Optimizer)
     return bc
 end
 ##
+function get_sweet_spot(; Δ, tratio, h, U, V, t, MaxTime, exps=collect(range(0.5, 3, length=4)), target=LD())
+    fixedparams = (; Δ, tratio, h, U, V, t)
+    pk = kitaev_sweet_spot2(; Δ, h, U, V, t, tratio)
+    hamfunc(ϕ, μ1, μ2) = abs_hamiltonian(c; μ1, μ2, ϕ, fixedparams...)
+    opt = Optimizer(;
+        hamfunc,
+        ranges=[(0.0, 1.0π), (0.0, 1.1 * pk.μ[1] + h + U), (-2h - U, U + V)],
+        initials=Float64.([pk.ϕ, pk.μ...]),
+        MaxTime, exps, target,
+        refinefactor=(0.9, :hard_limit),
+        tracemode=:silent,
+        extra_cost=((θ, μ1, μ2), e) -> exp(-(e * abs(μ1 - μ2) + 1)^4))
+    ss = get_sweet_spot(opt)
+    optsol = solve(opt.hamfunc(ss...))
+    parameters = merge(fixedparams, NamedTuple(zip((:ϕ, :μ1, :μ2), ss)))
+    optimization = opt
+    sweet_spot = merge(optsol, (; parameters, optimization))
+    return sweet_spot
+end
 function sweet_spot_scan((xs, xlabel), (ys, ylabel); fixedparams, MaxTime, target)
     iter = collect(Base.product(xs, ys))
     ss = Folds.map((xy) -> get_sweet_spot(; fixedparams..., Dict(xlabel => xy[1], ylabel => xy[2])..., MaxTime, target), iter)
-    return Dict(:sweet_spots => ss, xlabel => xs, ylabel => ys, :fixedparams => fixedparams, :MaxTime => MaxTime, :target => target)
+    return Dict(:sweet_spots => ss, :x => xs, :y => ys, :xlabel => xlabel, :ylabel => ylabel,
+    :fixedparams => fixedparams, :MaxTime => MaxTime, :target => target)
 end
-function charge_stability_scan(parameters, dx=1, dy=1, res = 100)
-    μ1s = range(parameters.μ[1] .- dx/2, parameters.μ[1] .+ dx/2; length=res)
-    μ2s = range(parameters.μ[1] .- dy/2, parameters.μ[2] .+ dy/2; length=res)
+function charge_stability_scan(parameters, dx=1, dy=1, res=100; transport=Transport(missing, missing))
+    μ1s = range(parameters.μ1 .- dx / 2, parameters.μ1 .+ dx / 2; length=res)
+    μ2s = range(parameters.μ2 .- dy / 2, parameters.μ2 .+ dy / 2; length=res)
     iter = collect(Base.product(μ1s, μ2s))
-    data = Folds.map((xy) -> solve(abs_hamiltonian(c; parameters..., :μ => xy)), iter)
+    data = Folds.map((xy) -> solve(abs_hamiltonian(c; parameters..., :μ1 => xy[1], :μ2 => xy[2]); transport), iter)
     return Dict(:data => data, :μs => iter, :μ1 => μ1s, :μ2 => μ2s, :fixedparams => fixedparams)
 end
 
