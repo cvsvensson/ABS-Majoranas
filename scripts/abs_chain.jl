@@ -46,3 +46,5 @@ nlcondfig, _, _ = plot_charge_stability(csdata; datamap=x -> real(x.conductance[
 display(nlcondfig)
 parityfig, _, _ = plot_charge_stability(csdata; datamap=x -> sign(x.gap), colormap=:vik, colorrange=2)
 display(parityfig)
+
+

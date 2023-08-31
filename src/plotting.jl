@@ -29,14 +29,14 @@ function plot_charge_stability(data; backgroundcolor=:transparent, kwargs...)
     ax, hm = plot_charge_stability!(fig, data; kwargs...)
     return fig, ax, hm
 end
-function plot_charge_stability!(fig::Figure, data, pos=(1, 1); colorbar=true, kwargs...)
+function plot_charge_stability!(f, data; kwargs...)
     xlabel = paramstyle[:μ1]
     ylabel = paramstyle[:μ2]
-    ax = Axis(fig[pos...]; xlabel, ylabel)
+    ax = Axis(f; xlabel, ylabel)
     hm = plot_charge_stability!(ax, data; kwargs...)
-    if colorbar
-        Colorbar(fig[pos[1], pos[2]+1], hm)
-    end
+    # if colorbar
+    #     Colorbar(fig[pos[1], pos[2]+1], hm)
+    # end
     return ax, hm
 end
 function plot_charge_stability!(ax::Axis, data; datamap=x -> x.gap, colormap=:berlin, colorrange=0.5)
