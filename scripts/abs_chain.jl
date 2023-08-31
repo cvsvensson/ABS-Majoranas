@@ -13,15 +13,15 @@ opt = Optimizer(
     MaxTime=10, minexcgap=fixedparams.Δ / 4,
     exps=collect(range(1, 6, length=4)),
     tracemode=:compact,
-    cost=LD)
+    target=LD)
 ss = get_sweet_spot(opt)
 optsol = solve(opt.hamfunc(ss...); transport)
 csdata = charge_stability_scan(merge(fixedparams, NamedTuple(zip((:t, :ϕ, :μ1, :μ2, :h), ss))), 5, 5)
 plot_charge_stability(csdata)[1]
 
 ##
-pss = parallel_sweet_spot(; U=2, V=0.01, Δ=1, tratio=0.2, t=0.5, h=1.5, MaxTime=5, cost=LD)
-apss = anti_parallel_sweet_spot(; U=2, V=0.01, Δ=1, tratio=0.2, t=0.5, h=1.5, MaxTime=5, cost=LD)
+pss = parallel_sweet_spot(; U=2, V=0.01, Δ=1, tratio=0.2, t=0.5, h=1.5, MaxTime=5, target=LD)
+apss = anti_parallel_sweet_spot(; U=2, V=0.01, Δ=1, tratio=0.2, t=0.5, h=1.5, MaxTime=5, target=LD)
 LD(pss) #bad
 MP(pss) #bad
 LD(apss) #Small is good

@@ -89,7 +89,7 @@ Base.@kwdef struct Optimizer2{f,r,i,rf}
     minexcgap::Float64 = 0.0
     exps::Vector{Float64} = Float64.(collect(range(1, 9; length=4)))
     refinefactor::rf = 0.5
-    cost = LD
+    target = LD
     tracemode::Symbol = :silent
     extra_cost = (x...) -> 0
 end
@@ -103,7 +103,7 @@ tracemode(opt::Optimizer) = opt.tracemode
 function cost(exp, opt::Optimizer)
     function _cost(args)
         sol = solve(opt.hamfunc(args...))
-        cost_function(sol.energies, opt.cost(sol); exp, opt.minexcgap) + opt.extra_cost(args, exp)
+        cost_function(sol.energies, opt.target(sol); exp, opt.minexcgap) + opt.extra_cost(args, exp)
     end
 end
 
@@ -126,7 +126,7 @@ function get_sweet_spot(opt::Optimizer)
     return bc
 end
 ##
-function anti_parallel_sweet_spot(; Δ, tratio, h, U, V, t, MaxTime, exps=collect(range(0.5, 3, length=4)), cost)
+function anti_parallel_sweet_spot(; Δ, tratio, h, U, V, t, MaxTime, exps=collect(range(0.5, 3, length=4)), target)
     fixedparams = (; Δ, tratio, h, U, V, t)
     pk = kitaev_sweet_spot_guess(; Δ, h, U, V, t, tratio)
     hamfunc(ϕ, μ1, μ2) = abs_hamiltonian(c; μ1, μ2, ϕ, fixedparams...)
@@ -134,7 +134,7 @@ function anti_parallel_sweet_spot(; Δ, tratio, h, U, V, t, MaxTime, exps=collec
         hamfunc,
         ranges=[(0.0, 1.0π), (0.0, 1.1 * pk.μ1 + abs(h) + U), (-abs(2h) - U, U + V)],
         initials=Float64.([pk.ϕ, pk.μ1, pk.μ2]),
-        MaxTime, exps, cost,
+        MaxTime, exps, target,
         refinefactor=(1, :hard_limit),
         tracemode=:silent,
         extra_cost=((ϕ, μ1, μ2), e) -> exp(-(e * abs(μ1 - μ2) + 1)^4))
@@ -145,7 +145,7 @@ function anti_parallel_sweet_spot(; Δ, tratio, h, U, V, t, MaxTime, exps=collec
     sweet_spot = merge(optsol, (; parameters, optimization))
     return sweet_spot
 end
-function parallel_sweet_spot(; Δ, tratio, h, U, V, t, MaxTime, exps=collect(range(0.5, 3, length=4)), cost, lower=true)
+function parallel_sweet_spot(; Δ, tratio, h, U, V, t, MaxTime, exps=collect(range(0.5, 3, length=4)), target, lower=true)
     fixedparams = (; Δ, tratio, h, U, V, t)
     pk = kitaev_sweet_spot_guess(; Δ, h, U, V, t, tratio)
     μinitial = lower ? pk.μ2 : pk.μ1
@@ -155,7 +155,7 @@ function parallel_sweet_spot(; Δ, tratio, h, U, V, t, MaxTime, exps=collect(ran
         hamfunc,
         ranges=[(0.0, 1.0π), μrange],
         initials=Float64.([pk.ϕ, μinitial]),
-        MaxTime, exps, cost,
+        MaxTime, exps, target,
         refinefactor=(1, :hard_limit),
         tracemode=:silent)
     ss = get_sweet_spot(opt)
@@ -166,11 +166,11 @@ function parallel_sweet_spot(; Δ, tratio, h, U, V, t, MaxTime, exps=collect(ran
     return sweet_spot
 end
 
-function sweet_spot_scan((xs, xlabel), (ys, ylabel), get_ss = anti_parallel_sweet_spot; fixedparams, MaxTime, cost)
+function sweet_spot_scan((xs, xlabel), (ys, ylabel), get_ss = anti_parallel_sweet_spot; fixedparams, MaxTime, target)
     iter = collect(Base.product(xs, ys))
-    ss = Folds.map((xy) -> get_ss(; fixedparams..., Dict(xlabel => xy[1], ylabel => xy[2])..., MaxTime, cost), iter)
+    ss = Folds.map((xy) -> get_ss(; fixedparams..., Dict(xlabel => xy[1], ylabel => xy[2])..., MaxTime, target), iter)
     return Dict(:sweet_spots => ss, :x => xs, :y => ys, :xlabel => xlabel, :ylabel => ylabel,
-        :fixedparams => fixedparams, :MaxTime => MaxTime, :cost => cost)
+        :fixedparams => fixedparams, :MaxTime => MaxTime, :target => target)
 end
 function charge_stability_scan(parameters, dx=1, dy=1, res=100; transport=missing)
     μ1s = range(parameters.μ1 .- dx / 2, parameters.μ1 .+ dx / 2; length=res)
