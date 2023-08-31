@@ -24,8 +24,8 @@ function add_exp_colorbar!(pos, hm; kwargs...)
 end
 
 ## Charge stability
-function plot_charge_stability(data; kwargs...)
-    fig = Figure(resolution=400 .* (1.2, 1), fontsize=20, backgroundcolor=:transparent)
+function plot_charge_stability(data; backgroundcolor=:transparent, kwargs...)
+    fig = Figure(;resolution=400 .* (1.2, 1), fontsize=20, backgroundcolor)
     ax, hm = plot_charge_stability!(fig, data; kwargs...)
     return fig, ax, hm
 end
@@ -48,8 +48,8 @@ function plot_charge_stability!(ax::Axis, data; datamap=x -> x.gap, colormap=:be
 end
 
 ## Plot sweet spot scan
-function plot_sweet_scan(data; kwargs...)
-    fig = Figure(resolution=400 .* (1.2, 1), fontsize=20, backgroundcolor=:transparent)
+function plot_sweet_scan(data; backgroundcolor=:transparent, kwargs...)
+    fig = Figure(;resolution=400 .* (1.2, 1), fontsize=20, backgroundcolor)
     ax, hm = plot_sweet_scan!(fig, data; kwargs...)
     return fig, ax, hm
 end
@@ -71,54 +71,17 @@ function plot_sweet_scan!(ax::Axis, data; datamap=MPU(), colormap=Reverse(:virid
     if plotbound
         tratio = data[:fixedparams].tratio
         Δ = data[:fixedparams].Δ
-        _bound(U) = bound(U, tratio, Δ)
-        lines!(ax, x, _bound, color=:black, linestyle=:dash, linewidth=2)
+        _upperbound(U) = upperbound(U, tratio, Δ)
+        _lowerbound(U) = lowerbound(U, tratio, Δ)
+        lines!(ax, x, _upperbound, color=:black, linestyle=:dash, linewidth=2)
+        lines!(ax, x, _lowerbound, color=:black, linestyle=:dash, linewidth=2)
         ylims!(ax, first(y), last(y))
     end
     return hm
 end
 
 
-# function mp_plot!(pos, x, y, data; colorrange=(-1.5, 0), cmap=default_colormap, colorscale=log10, axis=(), kwargs...)
-#     mps = map(ss -> 1 - abs(ss.mpu), data)
-#     ax = Axis(pos; axis...)
-#     hm = heatmap!(ax, x, y, mps; colorrange, colormap=cmap, colorscale, kwargs...)
-#     return ax, hm
-# end
-# function add_colorbar!(pos, hm; colorrange, kwargs...)
-#     ticks = expticks(colorrange...)
-#     cbar = Colorbar(pos, hm; ticks, kwargs...)
-#     return nothing
-# end
-# function UVplot!(pos, data; colorrange, cmap=Reverse(:viridis), kwargs...)
-#     x = data.Us
-#     y = data.Vs
-#     xlabel = L"U"
-#     ylabel = L"V"
-#     ax, hm = mp_plot!(pos, x, y, data[:sweet_spots]; cmap, colorrange, axis=(; xlabel, ylabel), kwargs...)
-#     return ax, hm
-# end
-
-# function Uhplot!(pos, data; colorrange, cmap=Reverse(:viridis), kwargs...)
-#     x = data.Us
-#     y = sort!(unique(map(ss -> ss.parameters.h, data[:sweet_spots])))
-#     xlabel = L"U"
-#     ylabel = L"V_Z"
-#     # bound(U) = sqrt(1 + tratio^(-2)) - U / 2# - U^2/20
-#     # bound(U) = 1 / 2 * (-U + sqrt(U^2 + 4 * (-(U / tratio) + 1 + 1 / tratio^2)))
-#     # bound(U) = ((-tratio * U + sqrt(4 - 4 * tratio * U + tratio^2 * (4 + U^2))) / (2 * tratio))
-#     # bound(U) = sqrt(1 + tratio^2) / tratio + 1 / 2 * (-1 -  1 / sqrt(1 + tratio^2)) * U + (tratio^3 * U^2) / (8 * (1 + tratio^2)^(3 / 2))
-#     # Vzmax = sqrt(1 + tratio^(-2))
-#     # bound(U) = Vzmax - U/2*(1 + 1/sqrt(1+tratio^2))
-#     ax, hm = mp_plot!(pos, x, y, data[:sweet_spots]; cmap, colorrange, axis=(; xlabel, ylabel), kwargs...)
-#     tratio = data[:params].tratio
-#     Δ = data[:params].Δ
-#     _bound(U) = bound(U,tratio,Δ)
-#     lines!(pos, x, _bound, color=:black, linestyle=:dash, linewidth=2)
-#     ylims!(ax, first(y), last(y))
-#     return ax, hm
-# end
-
-bound(U, tratio, Δ) = 1 / 2 * (-U + sqrt(
+lowerbound(U, tratio, Δ) = Δ - U/2
+upperbound(U, tratio, Δ) = 1 / 2 * (-U + sqrt(
     U^2 + (4 * (-tratio * U + Δ * (1 +
                                    tratio^2))) / tratio^2))

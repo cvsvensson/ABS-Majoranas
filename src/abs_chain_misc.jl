@@ -58,7 +58,7 @@ function half_majorana_polarizations(majcoeffs, basis)
     right = QuantumDots.majorana_polarization(majcoeffs..., keysR)
     return (; left, right)
 end
-function solve(H; basis=c, reduced=true, transport=Transport(missing, missing))
+function solve(H; basis=c, reduced=true, transport=missing)
     eig = QuantumDots.diagonalize(H)
     sectors = blocks(eig)
     fullsectors = blocks(eig; full=true)
@@ -81,11 +81,6 @@ function gapratio(oddvals, evenvals)
 end
 excgap(odd, even) = min(odd[2] - odd[1], even[2] - even[1])
 
-abstract type MajoranaQuality end
-struct LD <: MajoranaQuality end
-struct MP <: MajoranaQuality end
-struct MPU <: MajoranaQuality end
-
 Base.@kwdef struct Optimizer2{f,r,i,rf}
     hamfunc::f
     ranges::Vector{r}
@@ -94,21 +89,21 @@ Base.@kwdef struct Optimizer2{f,r,i,rf}
     minexcgap::Float64 = 0.0
     exps::Vector{Float64} = Float64.(collect(range(1, 9; length=4)))
     refinefactor::rf = 0.5
-    target::MajoranaQuality = LD()
+    cost = LD
     tracemode::Symbol = :silent
     extra_cost = (x...) -> 0
 end
 Optimizer = Optimizer2
 
-(::LD)(sol) = norm(sol.reduced.cells)^2
-(::MP)(sol) = norm((1 - abs(sol.mps.left.mp)), (1 - abs(sol.mps.right.mp)))
-(::MPU)(sol) = norm((1 - abs(sol.mps.left.mpu)), (1 - abs(sol.mps.right.mpu)))
+LD(sol) = norm(sol.reduced.cells)^2
+MP(sol) = norm((1 - abs(sol.mps.left.mp)), (1 - abs(sol.mps.right.mp)))
+MPU(sol) = norm((1 - abs(sol.mps.left.mpu)), (1 - abs(sol.mps.right.mpu)))
 
 tracemode(opt::Optimizer) = opt.tracemode
 function cost(exp, opt::Optimizer)
     function _cost(args)
         sol = solve(opt.hamfunc(args...))
-        cost_function(sol.energies, opt.target(sol); exp, opt.minexcgap) + opt.extra_cost(args, exp)
+        cost_function(sol.energies, opt.cost(sol); exp, opt.minexcgap) + opt.extra_cost(args, exp)
     end
 end
 
@@ -131,18 +126,18 @@ function get_sweet_spot(opt::Optimizer)
     return bc
 end
 ##
-function get_sweet_spot(; Δ, tratio, h, U, V, t, MaxTime, exps=collect(range(0.5, 3, length=4)), target=LD())
+function anti_parallel_sweet_spot(; Δ, tratio, h, U, V, t, MaxTime, exps=collect(range(0.5, 3, length=4)), cost)
     fixedparams = (; Δ, tratio, h, U, V, t)
-    pk = kitaev_sweet_spot2(; Δ, h, U, V, t, tratio)
+    pk = kitaev_sweet_spot_guess(; Δ, h, U, V, t, tratio)
     hamfunc(ϕ, μ1, μ2) = abs_hamiltonian(c; μ1, μ2, ϕ, fixedparams...)
     opt = Optimizer(;
         hamfunc,
-        ranges=[(0.0, 1.0π), (0.0, 1.1 * pk.μ[1] + h + U), (-2h - U, U + V)],
-        initials=Float64.([pk.ϕ, pk.μ...]),
-        MaxTime, exps, target,
-        refinefactor=(0.9, :hard_limit),
+        ranges=[(0.0, 1.0π), (0.0, 1.1 * pk.μ1 + abs(h) + U), (-abs(2h) - U, U + V)],
+        initials=Float64.([pk.ϕ, pk.μ1, pk.μ2]),
+        MaxTime, exps, cost,
+        refinefactor=(1, :hard_limit),
         tracemode=:silent,
-        extra_cost=((θ, μ1, μ2), e) -> exp(-(e * abs(μ1 - μ2) + 1)^4))
+        extra_cost=((ϕ, μ1, μ2), e) -> exp(-(e * abs(μ1 - μ2) + 1)^4))
     ss = get_sweet_spot(opt)
     optsol = solve(opt.hamfunc(ss...))
     parameters = merge(fixedparams, NamedTuple(zip((:ϕ, :μ1, :μ2), ss)))
@@ -150,18 +145,39 @@ function get_sweet_spot(; Δ, tratio, h, U, V, t, MaxTime, exps=collect(range(0.
     sweet_spot = merge(optsol, (; parameters, optimization))
     return sweet_spot
 end
-function sweet_spot_scan((xs, xlabel), (ys, ylabel); fixedparams, MaxTime, target)
-    iter = collect(Base.product(xs, ys))
-    ss = Folds.map((xy) -> get_sweet_spot(; fixedparams..., Dict(xlabel => xy[1], ylabel => xy[2])..., MaxTime, target), iter)
-    return Dict(:sweet_spots => ss, :x => xs, :y => ys, :xlabel => xlabel, :ylabel => ylabel,
-    :fixedparams => fixedparams, :MaxTime => MaxTime, :target => target)
+function parallel_sweet_spot(; Δ, tratio, h, U, V, t, MaxTime, exps=collect(range(0.5, 3, length=4)), cost, lower=true)
+    fixedparams = (; Δ, tratio, h, U, V, t)
+    pk = kitaev_sweet_spot_guess(; Δ, h, U, V, t, tratio)
+    μinitial = lower ? pk.μ2 : pk.μ1
+    μrange = lower ? (-2abs(h) - U, U + V) : (0.0, 1.1 * abs(pk.μ1) + abs(h) + U)
+    hamfunc(ϕ, μ) = abs_hamiltonian(c; μ1 = μ, μ2 = μ, ϕ, fixedparams...)
+    opt = Optimizer(;
+        hamfunc,
+        ranges=[(0.0, 1.0π), μrange],
+        initials=Float64.([pk.ϕ, μinitial]),
+        MaxTime, exps, cost,
+        refinefactor=(1, :hard_limit),
+        tracemode=:silent)
+    ss = get_sweet_spot(opt)
+    optsol = solve(opt.hamfunc(ss...))
+    parameters = merge(fixedparams, NamedTuple(zip((:ϕ, :μ1, :μ2), ss[[1,2,2]])))
+    optimization = opt
+    sweet_spot = merge(optsol, (; parameters, optimization))
+    return sweet_spot
 end
-function charge_stability_scan(parameters, dx=1, dy=1, res=100; transport=Transport(missing, missing))
+
+function sweet_spot_scan((xs, xlabel), (ys, ylabel), get_ss = anti_parallel_sweet_spot; fixedparams, MaxTime, cost)
+    iter = collect(Base.product(xs, ys))
+    ss = Folds.map((xy) -> get_ss(; fixedparams..., Dict(xlabel => xy[1], ylabel => xy[2])..., MaxTime, cost), iter)
+    return Dict(:sweet_spots => ss, :x => xs, :y => ys, :xlabel => xlabel, :ylabel => ylabel,
+        :fixedparams => fixedparams, :MaxTime => MaxTime, :cost => cost)
+end
+function charge_stability_scan(parameters, dx=1, dy=1, res=100; transport=missing)
     μ1s = range(parameters.μ1 .- dx / 2, parameters.μ1 .+ dx / 2; length=res)
     μ2s = range(parameters.μ2 .- dy / 2, parameters.μ2 .+ dy / 2; length=res)
     iter = collect(Base.product(μ1s, μ2s))
     data = Folds.map((xy) -> solve(abs_hamiltonian(c; parameters..., :μ1 => xy[1], :μ2 => xy[2]); transport), iter)
-    return Dict(:data => data, :μs => iter, :μ1 => μ1s, :μ2 => μ2s, :fixedparams => fixedparams)
+    return Dict(:data => data, :μs => iter, :μ1 => μ1s, :μ2 => μ2s, :parameters => parameters)
 end
 
 ## Transport
@@ -169,7 +185,7 @@ struct Transport{T,NT}
     type::T
     parameters::NT
 end
-QuantumDots.conductance_matrix(::Transport{Missing}, eig) = missing
+QuantumDots.conductance_matrix(::Missing, eig) = missing
 function QuantumDots.conductance_matrix(t::Transport, eig)
     leads = get_leads(c, t.parameters...)
     system = t.type(QuantumDots.diagonalize(QuantumDots.OpenSystem(eig, leads)))
@@ -225,8 +241,8 @@ function kitaev_tΔ(; t, tratio, μ, Δ)
     end
 end
 
-function kitaev_sweet_spot2(; t, tratio, Δ, U, V, h)
-    guess = [sqrt((h + U / 2)^2 - Δ^2) + U / 2, -sqrt((h + U / 2)^2 - Δ^2) + U / 2, pi / 2.0]
+function kitaev_sweet_spot_guess(; t, tratio, Δ, U, V, h)
+    guess = [sqrt(abs((h + U / 2)^2 - Δ^2)) + U / 2, -sqrt(abs((h + U / 2)^2 - Δ^2)) + U / 2, pi / 2.0]
     function cost((μ1, μ2, ϕ))
         pK = KitaevParameters(; t, tratio, Δ, U, V, h, μ=(μ1, μ2), ϕ)
         abs2(abs(pK.t) + pK.V / 2 - abs(pK.Δ)) + sum(abs2, pK.μ .+ pK.V / 2)
@@ -234,7 +250,7 @@ function kitaev_sweet_spot2(; t, tratio, Δ, U, V, h)
     sol = bboptimize(cost, guess;
         SearchRange=[map(μ -> (μ - 1, μ + 1), guess[1:2])..., (0, pi)], TargetFitness=1e-6, TraceMode=:silent)
     bc = best_candidate(sol)
-    (; μ=(bc[1], bc[2]), ϕ=bc[3])
+    (; μ1=bc[1], μ2=bc[2], ϕ=bc[3])
 end
 
 kitaev_μ_zero(Δ, h, U) = U / 2 .+ (1, -1) .* (sqrt(-4Δ^2 + U^2 + 4h * U + 4h^2) / 2)
