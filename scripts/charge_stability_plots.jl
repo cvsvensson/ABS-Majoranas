@@ -16,8 +16,8 @@ csdata_big = charge_stability_scan((; ssparams..., μ1=0, μ2=0), 8, 8, bigres);
 csdata_small = [charge_stability_scan((; ssparams..., ϕ), 1, 1, smallres) for ϕ in ϕs]
 
 ##
-f = Figure(resolution=400 .* (1, 1), fontsize=20, backgroundcolor = :transparent);
 f = Figure(resolution=400 .* (1, 1), fontsize=20, backgroundcolor = :white);
+f = Figure(resolution=400 .* (1, 1), fontsize=20, backgroundcolor = :transparent);
 g = f[1, 1] = GridLayout()
 gb = g[1, 1] = GridLayout()
 gs = g[2, 1] = GridLayout()
@@ -45,17 +45,20 @@ spinecolor = NamedTuple(map(x-> x=> linecolor, [:bottomspinecolor, :leftspinecol
 small_axes = [Axis(gs[1, n]; spinecolor..., spinewidth = linewidth) for (n, ϕ) in enumerate(ϕs)] #subtitle = L"ϕ=%$(round(ϕ,digits=2))" 
 foreach((ax,data) -> plot_charge_stability!(ax, data; datamap), small_axes, csdata_small)
 hidedecorations!.(small_axes)
-ax.xticks = -8:4:8
-ax.yticks = -8:4:8
+ax.xticks = -4:8:4
+
+ax.yticks = -4:8:4
+ax.xticklabelspace = 0.0#tight_xticklabel_spacing!(ax)
+ax.yticklabelspace = 0.0#tight_xticklabel_spacing!(ax)
 rowgap!(g, 5)
-rowsize!(g, 2, Auto(.35))
+rowsize!(g, 2, Auto(.4))
 labels = [Label(gs[1, n,Bottom()], L"ϕ ≈ %$(round(ϕ,digits=2))", padding = (0,0,-5,2)) for (n, ϕ) in enumerate(ϕs)]
 
 # Label(gb[1, 1, Top()], "tanh(δE)", valign = :top,
 Label(gb[1, 1, Top()], L"\tanh{(δE)}", valign = :top,
     padding = (0, 0, 2, -10))
 Label(gs[1, 1:3, Top()], L"\text{Ground state parity}", valign = :bottom,
-    padding = (0, 0, 2, 0))
+    padding = (0, 0, 3, 4))
 
 
 f |> display
