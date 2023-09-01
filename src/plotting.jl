@@ -1,7 +1,7 @@
 using CairoMakie
 using LaTeXStrings
 
-paramstyle = Dict(:U => L"U", :V => L"V", :h => L"V_Z", :tratio => L"t_{so}", :μ1 => L"μ_1", :μ2 => L"μ_2")
+paramstyle = Dict(:U => L"U_l", :V => L"U_{nl}", :h => L"V_Z", :tratio => L"t_{so}", :μ1 => L"μ_1", :μ2 => L"μ_2")
 
 struct IntegerTicks end
 struct Log10IntegerTicks end
@@ -63,7 +63,7 @@ function plot_sweet_scan!(fig::Figure, data, pos=(1, 1); colorbar=true, kwargs..
     end
     return ax, hm
 end
-function plot_sweet_scan!(ax::Axis, data; datamap=MPU(), colormap=Reverse(:viridis), colorrange=(10.0^(-1.5), 1), colorscale=log10, plotbound=(data[:xlabel] == :U && data[:ylabel] == :h))
+function plot_sweet_scan!(ax::Axis, data; datamap=MPU, colormap=Reverse(:viridis), colorrange=(10.0^(-1.5), 1), colorscale=log10, plotbound=(data[:xlabel] == :U && data[:ylabel] == :h))
     x = data[:x]
     y = data[:y]
     z = map(datamap, data[:sweet_spots])
