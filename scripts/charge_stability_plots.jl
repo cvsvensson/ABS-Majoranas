@@ -7,7 +7,7 @@ using DataFrames
 # resultsUV = collect_results(datadir("UV-scan"))
 resultsUh = collect_results(datadir("Uh-scan"))
 ##
-bigres = 500 # 500 takes minutes
+bigres = 500
 smallres = 500
 resultsUh[1, :sweet_spots][2, 9].parameters
 ssparams = resultsUh[1, :sweet_spots][2, 9].parameters #(; U=0, V=0, h=1.5, t=0.5, Δ=1.0, tratio=0.2)
