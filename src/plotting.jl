@@ -19,8 +19,7 @@ end
 function add_exp_colorbar!(pos, hm; kwargs...)
     colorrange = hm.colorrange.val
     ticks = expticks(colorrange...)
-    cbar = Colorbar(pos, hm; ticks, kwargs...)
-    return nothing
+    return Colorbar(pos, hm; ticks, kwargs...)
 end
 
 ## Charge stability
