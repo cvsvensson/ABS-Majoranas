@@ -24,7 +24,7 @@ end
 
 ## Charge stability
 function plot_charge_stability(data; backgroundcolor=:transparent, kwargs...)
-    fig = Figure(;resolution=400 .* (1.2, 1), fontsize=20, backgroundcolor)
+    fig = Figure(; resolution=400 .* (1.2, 1), fontsize=20, backgroundcolor)
     ax, hm = plot_charge_stability!(fig, data; kwargs...)
     return fig, ax, hm
 end
@@ -48,7 +48,7 @@ end
 
 ## Plot sweet spot scan
 function plot_sweet_scan(data; backgroundcolor=:transparent, kwargs...)
-    fig = Figure(;resolution=400 .* (1.2, 1), fontsize=20, backgroundcolor)
+    fig = Figure(; resolution=400 .* (1.2, 1), fontsize=20, backgroundcolor)
     ax, hm = plot_sweet_scan!(fig, data; kwargs...)
     return fig, ax, hm
 end
@@ -80,7 +80,8 @@ function plot_sweet_scan!(ax::Axis, data; datamap=MPU, colormap=Reverse(:viridis
 end
 
 
-lowerbound(U, tratio, Δ) = Δ - U/2
-upperbound(U, tratio, Δ) = 1 / 2 * (-U + sqrt(
-    U^2 + (4 * (-tratio * U + Δ * (1 +
-                                   tratio^2))) / tratio^2))
+lowerbound(U, tratio, Δ) = Δ - U / 2
+# upperbound(U, tratio, Δ) = 1 / 2 * (-U + sqrt(
+#     U^2 + (4 * (-tratio * U + Δ * (1 +
+#                                    tratio^2))) / tratio^2))
+upperbound(U, tratio, Δ) = Δ * sqrt(1 + tratio^(-2)) - U / 2

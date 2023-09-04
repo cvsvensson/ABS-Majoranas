@@ -52,7 +52,8 @@ ax.xticklabelspace = 0.0#tight_xticklabel_spacing!(ax)
 ax.yticklabelspace = 0.0#tight_xticklabel_spacing!(ax)
 rowgap!(g, 5)
 rowsize!(g, 2, Auto(0.4))
-labels = [Label(gs[1, n, Bottom()], L"ϕ ≈ %$(round(ϕ,digits=2))", padding=(0, 0, -5, 2)) for (n, ϕ) in enumerate(ϕs)]
+#labels = [Label(gs[1, n, Bottom()], L"ϕ ≈ %$(round(ϕ,digits=2))", padding=(0, 0, -5, 2)) for (n, ϕ) in enumerate(ϕs)]
+labels = [Label(gs[1, n, Bottom()], s, padding=(0, 0, -5, 2)) for (n, s) in enumerate([L"ϕ = ϕ_\star"])]
 
 # Label(gb[1, 1, Top()], "tanh(δE)", valign = :top,
 Label(gb[1, 1, Top()], L"\tanh{(δE)}", valign=:top,
