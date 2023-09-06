@@ -4,9 +4,7 @@ includet(srcdir("abs_chain_misc.jl"))
 includet(srcdir("plotting.jl"))
 using DataFrames
 resultsUVp = collect_results(datadir("UV-scan", "parallel"))
-# resultsUVap = collect_results(datadir("UV-scan", "anti_parallel"))
 resultsUhp = collect_results(datadir("Uh-scan", "parallel"))
-# resultsUhap = collect_results(datadir("Uh-scan", "anti_parallel"))
 
 ##
 ssdata = resultsUhp[1, :]

@@ -73,20 +73,20 @@ save(plotsdir(string("charge_stability_phase_transparent", paramstring, ".pdf"))
 
 ## Horizontal fig
 
-f = Figure(resolution=400 .* (1, .9), fontsize=20, backgroundcolor=:transparent);
-f = Figure(resolution=400 .* (1, .9), fontsize=20, backgroundcolor=:white);
+f = Figure(resolution=400 .* (1, 0.9), fontsize=20, backgroundcolor=:transparent);
+f = Figure(resolution=400 .* (1, 0.9), fontsize=20, backgroundcolor=:white);
 g = f[1, 1] = GridLayout()
 gb = g[1, 1] = GridLayout()
 gs = g[1, 2] = GridLayout()
 
 
 datamap = x -> sign(x.gap)
-ax = Axis(gb[1, 1], xlabel=L"μ_1", ylabel=L"μ_2", aspect = 1)#,  subtitle = L"\tanh{\left(δE\right)}")
+ax = Axis(gb[1, 1], xlabel=L"μ_1", ylabel=L"μ_2", aspect=1)#,  subtitle = L"\tanh{\left(δE\right)}")
 hm = plot_charge_stability!(ax, csdata_big; colorrange=1, datamap=x -> tanh(x.gap), colormap=:berlin)
-cb = Colorbar(gb[2, 1], hm; vertical=false, label=L"\tanh{(δE)}", flipaxis=false,labelpadding = -20, ticks = [-1,1],height = 12,
-alignmode = Outside())
+cb = Colorbar(gb[2, 1], hm; vertical=false, label=L"\tanh{(δE)}", flipaxis=false, labelpadding=-20, ticks=[-1, 1], height=12,
+    alignmode=Outside())
 
-boxax = Axis(gb[1, 1], aspect = 1)
+boxax = Axis(gb[1, 1], aspect=1)
 hidedecorations!(boxax)
 linewidth = 2
 linecolor = :black
@@ -100,7 +100,7 @@ ylims!(first(csdata_big[:μ2]), last(csdata_big[:μ2]))
 # ax1 = Axis(gs[1,1], xlabel = L"μ_1", ylabel = "after", fontsize = 1)
 
 spinecolor = NamedTuple(map(x -> x => linecolor, [:bottomspinecolor, :leftspinecolor, :topspinecolor, :rightspinecolor]))
-small_axes = [Axis(gs[n, 1]; spinecolor..., spinewidth=linewidth, aspect = 1) for (n, ϕ) in enumerate(ϕs)] #subtitle = L"ϕ=%$(round(ϕ,digits=2))" 
+small_axes = [Axis(gs[n, 1]; spinecolor..., spinewidth=linewidth, aspect=1) for (n, ϕ) in enumerate(ϕs)] #subtitle = L"ϕ=%$(round(ϕ,digits=2))" 
 foreach((ax, data) -> plot_charge_stability!(ax, data; datamap), small_axes, csdata_small)
 hidedecorations!.(small_axes)
 ax.xticks = -4:8:4
@@ -114,11 +114,11 @@ labels = [Label(gs[n, 1, Bottom()], L"ϕ ≈ %$(round(ϕ,digits=2))", padding=(0
 # Label(gb[1, 1, Top()], L"\tanh{(δE)}", valign = :top,
 # padding = (0, 0, 2, -10))
 Label(gs[1, 1, Top()], L"\text{Parity}", valign=:bottom,
-padding=(0, 0, 3, -10))
+    padding=(0, 0, 3, -10))
 
 colsize!(g, 2, Auto(0.4))
 # rowsize!(gb, 2, Auto(.1))
-cb.alignmode = Mixed(top = -10,bottom = -10)
+cb.alignmode = Mixed(top=-10, bottom=-10)
 # rowgap!(gb, 10)
 # trim!(f.layout)
 f |> display

@@ -42,17 +42,13 @@ scanfig = let data1 = resultsUhap[1, :], data2 = resultsUVap[1, :]
     hm2 = plot_sweet_scan!(ax2, data2)
     label = L"1-\text{MP}"
     add_exp_colorbar!(fig[1, 3], hm1;)
-    # add_exp_colorbar!(fig[1,3], hm)
-    # ax, hm = plot_sweet_scan!(fig[1, 1], data1; colorrange)
-    # ax, hm = plot_sweet_scan!(fig[1, 2], data2; colorrange)
-    # add_colorbar!(fig[1, 1+end], hm; colorrange)
     paramstring1 = map(x -> round(x, digits=2), data1[:fixedparams])
     paramstring2 = map(x -> round(x, digits=2), data2[:fixedparams])
 
     supertitle = Label(fig[1, 3, Top()], label, fontsize=25, padding=(0, 0, 8, 0))
     colgap!(fig.layout, 1, 16)
     colgap!(fig.layout, 2, 10)
-    #save(plotsdir(string("____uhvplot_transparent", paramstring1, "_", paramstring2, ".png")), fig, px_per_unit=4)
+    #save(plotsdir(string("uhvplot_transparent", paramstring1, "_", paramstring2, ".png")), fig, px_per_unit=4)
     fig
 end
 
@@ -69,8 +65,6 @@ transport = Transport(QuantumDots.Pauli(), (; T=1 / 20, μ=(0.0, 0.0)))
 csdata_small = [charge_stability_scan((; ss.parameters...), 0.8, 0.8, smallres; transport) for ss in sweet_spots]
 
 ##
-# colors = Makie.wong_colors()[[2, 4, 6]]
-# colors = cgrad(:Dark2_7, categorical=true)[[2, 3, 4]]
 colors = cgrad(:rainbow, categorical=true)[[1, 2, 5, 4][1:length(csdata_small)]]
 fixedparamstring = map(x -> round(x, digits=2), ssdata[:fixedparams])
 f = Figure(resolution=400 .* (1.4, 1), fontsize=20, backgroundcolor=:white);
@@ -104,27 +98,16 @@ labels = [Label(gs[n, 1:2, Bottom()], L"MP ≈ %$(round(1-MPU(ss),digits=2))", p
 Label(gs[1, 1, Top()], L"\text{Parity}", padding=(0, 0, 2, -10))
 Label(gs[1, 2, Top()], L"G_{\text{nl}}", padding=(0, 0, 2, -10))
 
-# Label(gb[1, 1, Top()], "tanh(δE)", valign = :top,
-# Label(gb[1, 1, Top()], L"\tanh{(δE)}", valign = :top,
-# padding = (0, 0, 2, -10))
-
-# Label(gs[1, 1, Top()], L"\text{Parity}", valign=:bottom,
-# padding=(0, 0, 3, -10))
 
 colsize!(g, 2, Auto(0.4))
 colsize!(g, 2, Auto(0.9))
-# rowsize!(gb, 2, Auto(.1))
 cb.alignmode = Mixed(top=-15, bottom=0)
-# rowgap!(gb, 10)
-# trim!(f.layout)
-
 f |> display
 
 ##
 save(plotsdir(string("uhplot_transparent", fixedparamstring, ".png")), f, px_per_unit=4)
 
-##
-
+######
 ##
 ssdata = resultsUVap[1, :]
 nx, ny = size(ssdata[:sweet_spots])
@@ -167,28 +150,16 @@ foreach((ax, data) -> plot_charge_stability!(ax, data; datamap), small_axes, csd
 foreach((ax, data) -> plot_charge_stability!(ax, data; datamap=datamap2, colormap=:vik, colorrange=2), small_axes2, csdata_small)
 hidedecorations!.(small_axes)
 hidedecorations!.(small_axes2)
-# labels = [Label(gs[n, 1:2, Top()], L"MP ≈ %$(round(1-MPU(ss),digits=2))", padding=(0, 0, -5, -10)) for (n, ss) in enumerate(sweet_spots)]
 labels = [Label(gs[n, 1:2, Bottom()], L"MP ≈ %$(round(1-MPU(ss),digits=2))", padding=(0, 0, -15, 4)) for (n, ss) in enumerate(sweet_spots)]
 Label(gs[1, 1, Top()], L"\text{Parity}", padding=(0, 0, 2, -10))
 Label(gs[1, 2, Top()], L"G_{\text{nl}}", padding=(0, 0, 2, -10))
-# Label(gb[1, 1, Top()], "tanh(δE)", valign = :top,
-# Label(gb[1, 1, Top()], L"\tanh{(δE)}", valign = :top,
-# padding = (0, 0, 2, -10))
-
-# Label(gs[1, 1, Top()], L"\text{Parity}", valign=:bottom,
-# padding=(0, 0, 3, -10))
 
 colsize!(g, 2, Auto(0.4))
 colsize!(g, 2, Auto(0.9))
-# rowsize!(gb, 2, Auto(.1))
 cb.alignmode = Mixed(top=-15, bottom=0)
-# rowgap!(gb, 10)
-# trim!(f.layout)
 
 f |> display
 
 ##
 save(plotsdir(string("_uvplot_transparent", fixedparamstring, ".png")), f, px_per_unit=4)
 
-
-##
