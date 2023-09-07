@@ -9,15 +9,17 @@ resultsUh = collect_results(datadir("Uh-scan", "anti_parallel"))
 ##
 bigres = 200
 smallres = 200
-ssparams = resultsUh[1, :sweet_spots][10, 12].parameters
+data = resultsUh[1, :]
+pos = Int.(round.(size(data[:sweet_spots]) .* (10/40, 12/40)))
+ssparams = data[:sweet_spots][pos...].parameters
 paramstring = map(x -> round(x, digits=2), ssparams)
 csdata_big = charge_stability_scan((; ssparams..., μ1=0, μ2=0), 8, 8, bigres);
 ϕs = ssparams.ϕ .+ [-pi / 2, 0, pi / 2]
 csdata_small = [charge_stability_scan((; ssparams..., ϕ), 1, 1, smallres) for ϕ in ϕs]
 
 ##
-f = Figure(resolution=400 .* (1, 1), fontsize=20, backgroundcolor=:transparent);
 f = Figure(resolution=400 .* (1, 1), fontsize=20, backgroundcolor=:white);
+f = Figure(resolution=400 .* (1, 1), fontsize=20, backgroundcolor=:transparent);
 g = f[1, 1] = GridLayout()
 gb = g[1, 1] = GridLayout()
 gs = g[2, 1] = GridLayout()
@@ -73,8 +75,8 @@ save(plotsdir(string("charge_stability_phase_transparent", paramstring, ".pdf"))
 
 ## Horizontal fig
 
-f = Figure(resolution=400 .* (1, 0.9), fontsize=20, backgroundcolor=:transparent);
 f = Figure(resolution=400 .* (1, 0.9), fontsize=20, backgroundcolor=:white);
+f = Figure(resolution=400 .* (1, 0.9), fontsize=20, backgroundcolor=:transparent);
 g = f[1, 1] = GridLayout()
 gb = g[1, 1] = GridLayout()
 gs = g[1, 2] = GridLayout()
@@ -108,7 +110,8 @@ ax.yticks = -4:8:4
 ax.xticklabelspace = 0.0#tight_xticklabel_spacing!(ax)
 ax.yticklabelspace = 0.0#tight_xticklabel_spacing!(ax)
 # rowgap!(g, 5)
-labels = [Label(gs[n, 1, Bottom()], L"ϕ ≈ %$(round(ϕ,digits=2))", padding=(0, 0, -5, 2)) for (n, ϕ) in enumerate(ϕs)]
+# labels = [Label(gs[n, 1, Bottom()], L"ϕ ≈ %$(round(ϕ,digits=2))", padding=(0, 0, -5, 2)) for (n, ϕ) in enumerate(ϕs)]
+[Label(gs[n, 1, Bottom()], L"\delta ϕ %$s \delta ϕ_\star", padding=(0, 0, -5, 2)) for (n, s) in enumerate(["<","=",">"])]
 
 # Label(gb[1, 1, Top()], "tanh(δE)", valign = :top,
 # Label(gb[1, 1, Top()], L"\tanh{(δE)}", valign = :top,
@@ -126,5 +129,5 @@ f |> display
 save(plotsdir(string("horizontal_charge_stability_phase", paramstring, ".pdf")), f, pt_per_unit=1)
 save(plotsdir(string("horizontal_charge_stability_phase", paramstring, ".png")), f, px_per_unit=4)
 ##
-save(plotsdir(string("horizontal_charge_stability_phase_transparent", paramstring, ".png")), f, px_per_unit=4)
+save(plotsdir(string("_horizontal_charge_stability_phase_transparent", paramstring, ".png")), f, px_per_unit=4)
 save(plotsdir(string("horizontal_charge_stability_phase_transparent", paramstring, ".pdf")), f, pt_per_unit=1)
