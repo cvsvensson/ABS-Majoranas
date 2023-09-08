@@ -29,7 +29,7 @@ fig, _, _ = plot_sweet_scan(resultsUhap[1, :]; datamap=x -> x.parameters.ϕ, col
 display(fig)
 
 ##
-scanfig = let data1 = resultsUhap[1, :], data2 = resultsUVap[1, :]
+scanfig = let data1 = resultsUhap[3, :], data2 = resultsUVap[3, :]
     fig = Figure(; resolution=400 .* (2, 1), fontsize=20, backgroundcolor=:transparent)
     xlabel1 = paramstyle[data1[:xlabel]]
     xlabel2 = paramstyle[data2[:xlabel]]
