@@ -44,17 +44,16 @@ function reduced_similarity(basis, oddvec::AbstractVector{T}, evenvec) where {T}
     labels = cell_labels(basis)
     cells = map(n -> norm(QuantumDots.reduced_density_matrix(o, labels(n), basis) -
                           QuantumDots.reduced_density_matrix(e, labels(n), basis)),
-        collect(unique(first.(keys(basis)))))
+        spatial_labels(basis))
     return (; fermions, cells)
 end
 
 function half_majorana_polarizations(majcoeffs, basis)
-    keys1 = sort(unique(first.(collect(keys(basis)))))
+    keys1 = spatial_labels(basis)
     N = length(keys1)
     n = div(N + 1, 2)
-    keys1L = eachindex(keys1)[1:n]
-    keys1L = eachindex(keys1)[1:n]
-    keys1R = eachindex(keys1)[end:-1:end-n+1]
+    keys1L = (keys1)[1:n]
+    keys1R = (keys1)[end:-1:end-n+1]
     keysL = filter(k -> first(k) in keys1L, keys(basis))
     keysR = filter(k -> first(k) in keys1R, keys(basis))
     left = QuantumDots.majorana_polarization(majcoeffs..., keysL)
@@ -72,7 +71,7 @@ function solve(H; basis=c, reduced=true, transport=missing)
     majcoeffs = QuantumDots.majorana_coefficients(oddvecs[:, 1], evenvecs[:, 1], basis)
     mps = half_majorana_polarizations(majcoeffs, basis)
     reduced = reduced ? reduced_similarity(basis, oddvecs[:, 1], evenvecs[:, 1]) : missing
-    conductance = conductance_matrix(transport, eig)
+    conductance = conductance_matrix(transport, eig; basis)
     return (; gap=first(oddvals) - first(evenvals), gapratio=gapratio(oddvals, evenvals), reduced, mps, majcoeffs, energies=(oddvals, evenvals), conductance)
 end
 
@@ -222,16 +221,18 @@ struct Transport{T,NT}
     type::T
     parameters::NT
 end
-QuantumDots.conductance_matrix(::Missing, eig) = missing
-function QuantumDots.conductance_matrix(t::Transport, eig)
-    leads = get_leads(c, t.parameters...)
+QuantumDots.conductance_matrix(::Missing, eig; kwargs...) = missing
+function QuantumDots.conductance_matrix(t::Transport, eig; basis = c)
+    leads = get_leads(basis, t.parameters...)
     system = t.type(QuantumDots.diagonalize(QuantumDots.OpenSystem(eig, leads)))
     QuantumDots.conductance_matrix(system)
 end
+spatial_labels(basis) = collect(unique(first.(keys(basis))))
 function get_leads(c, T, μ, Γ=1)
-    N = div(QuantumDots.nbr_of_fermions(c), 2)
-    left = QuantumDots.CombinedLead((Γ * c[1, :↑]', Γ * c[1, :↓]'); T, μ=μ[1])
-    right = QuantumDots.CombinedLead((Γ * c[N, :↑]', Γ * c[N, :↓]'); T, μ=μ[2])
+    # N = div(QuantumDots.nbr_of_fermions(c), 2)
+    l = spatial_labels(c)
+    left = QuantumDots.CombinedLead((Γ * c[l[1], :↑]', Γ * c[l[1], :↓]'); T, μ=μ[1])
+    right = QuantumDots.CombinedLead((Γ * c[l[end], :↑]', Γ * c[l[end], :↓]'); T, μ=μ[2])
     return (; left, right)
 end
 
