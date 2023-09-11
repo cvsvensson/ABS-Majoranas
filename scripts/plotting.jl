@@ -29,7 +29,7 @@ fig, _, _ = plot_sweet_scan(resultsUhap[1, :]; datamap=x -> x.parameters.ϕ, col
 display(fig)
 
 ##
-scanfig = let data1 = resultsUhap[3, :], data2 = resultsUVap[3, :]
+scanfig = let data1 = resultsUhap[1, :], data2 = resultsUVap[3, :]
     fig = Figure(; resolution=400 .* (2, 1), fontsize=20, backgroundcolor=:transparent)
     xlabel1 = paramstyle[data1[:xlabel]]
     xlabel2 = paramstyle[data2[:xlabel]]
@@ -56,19 +56,19 @@ end
 ##
 ssdata = resultsUhap[1, :]
 nx, ny = size(ssdata[:sweet_spots])
-smallres = 200
-# positions = map(x -> Int.(floor.((nx, ny) .* x)), [(0.55, 0.75), (0.25, 0.5), (0.22, 0.1), (0.25, 0.1)])
+smallres = 100
+positions = map(x -> Int.(floor.((nx, ny) .* x)), [(0.4, 0.7), (0.25, 0.5), (0.25, 0.38), (0.25, 0.33)])
 positions = map(x -> Int.(floor.((nx, ny) .* x)), [(0.5, 0.8), (0.3, 0.4), (0.1, 0.1)])
 sweet_spots = [ssdata[:sweet_spots][pos...] for pos in positions]
 paramstring = map(ss -> map(x -> round(x, digits=2), ss.parameters), sweet_spots)
 transport = Transport(QuantumDots.Pauli(), (; T=1 / 20, μ=(0.0, 0.0)))
-csdata_small = [charge_stability_scan((; ss.parameters...), 0.8, 0.8, smallres; transport) for ss in sweet_spots]
+csdata_small = [charge_stability_scan((; ss.parameters...), 4*0.8, 4*0.8, smallres; transport) for ss in sweet_spots]
 
 ##
 colors = cgrad(:rainbow, categorical=true)[[1, 2, 5, 4][1:length(csdata_small)]]
 fixedparamstring = map(x -> round(x, digits=2), ssdata[:fixedparams])
-f = Figure(resolution=400 .* (1.4, 1), fontsize=20, backgroundcolor=:white);
 f = Figure(resolution=400 .* (1.4, 1), fontsize=20, backgroundcolor=:transparent);
+f = Figure(resolution=400 .* (1.4, 1), fontsize=20, backgroundcolor=:white);
 g = f[1, 1] = GridLayout()
 gb = g[1, 1] = GridLayout()
 gs = g[1, 2] = GridLayout()
@@ -87,6 +87,7 @@ datamap = x -> sign(x.gap)
 datamap2 = x -> real(x.conductance)[1, 2] * real(x.conductance)[1, 1]
 datamap2 = x -> real(x.conductance)[1, 2] - real(x.conductance)[2, 1]
 datamap2 = x -> real(x.conductance)[1, 2]
+datamap2 = MPU
 spinecolor = [NamedTuple(map(x -> x => colors[n], [:bottomspinecolor, :leftspinecolor, :topspinecolor, :rightspinecolor])) for n in eachindex(csdata_small)]
 small_axes = [Axis(gs[n, 1]; spinecolor[n]..., spinewidth=4, aspect=1) for (n, data) in enumerate(csdata_small)] #subtitle = L"ϕ=%$(round(ϕ,digits=2))" 
 small_axes2 = [Axis(gs[n, 2]; spinecolor[n]..., spinewidth=4, aspect=1) for (n, data) in enumerate(csdata_small)] #subtitle = L"ϕ=%$(round(ϕ,digits=2))" 

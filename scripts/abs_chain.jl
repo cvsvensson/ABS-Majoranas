@@ -14,7 +14,17 @@ opt = Optimizer(
     exps=collect(range(1, 6, length=4)),
     tracemode=:compact,
     target=LD)
+opt2 = Optimizer(
+    hamfunc=(t, ϕ, μ1, μ2, h) -> abs_hamiltonian(c; μ1, μ2, t, ϕ, h, fixedparams...),
+    ranges=[(0.1, 10.0) .* fixedparams.Δ, (0.0, 2.0π), (0.0, 20.0) .* fixedparams.Δ, (-20.0, 0.0) .* fixedparams.Δ, (1.0, 20.0) .* fixedparams.Δ],
+    initials=[1, π, -fixedparams.Δ, fixedparams.Δ, fixedparams.tratio^-1 * fixedparams.Δ];
+    MaxTime=10, minexcgap=fixedparams.Δ / 4,
+    exps=collect(range(1, 6, length=4)),
+    tracemode=:compact,
+    target=LD)
+
 ss = get_sweet_spot(opt)
+ss2 = get_sweet_spot_borg(opt)
 optsol = solve(opt.hamfunc(ss...); transport)
 csdata = charge_stability_scan(merge(fixedparams, NamedTuple(zip((:t, :ϕ, :μ1, :μ2, :h), ss))), 5, 5)
 plot_charge_stability(csdata)[1]

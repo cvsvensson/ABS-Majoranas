@@ -9,72 +9,16 @@ resultsUh = collect_results(datadir("Uh-scan", "anti_parallel"))
 ##
 bigres = 200
 smallres = 200
-data = resultsUh[1, :]
-pos = Int.(round.(size(data[:sweet_spots]) .* (10/40, 12/40)))
+data = resultsUh[2, :]
+pos = Int.(round.(size(data[:sweet_spots]) .* (20/40, 9/40)))
 ssparams = data[:sweet_spots][pos...].parameters
 paramstring = map(x -> round(x, digits=2), ssparams)
-csdata_big = charge_stability_scan((; ssparams..., μ1=0, μ2=0), 8, 8, bigres);
+μ0 = (ssparams.μ1 + ssparams.μ2)/2
+csdata_big = charge_stability_scan((; ssparams..., μ1=μ0, μ2=μ0), 8, 8, bigres);
 ϕs = ssparams.ϕ .+ [-pi / 2, 0, pi / 2]
-csdata_small = [charge_stability_scan((; ssparams..., ϕ), 1, 1, smallres) for ϕ in ϕs]
-
-##
-f = Figure(resolution=400 .* (1, 1), fontsize=20, backgroundcolor=:white);
-f = Figure(resolution=400 .* (1, 1), fontsize=20, backgroundcolor=:transparent);
-g = f[1, 1] = GridLayout()
-gb = g[1, 1] = GridLayout()
-gs = g[2, 1] = GridLayout()
-
-
-datamap = x -> sign(x.gap)
-ax = Axis(gb[1, 1], xlabel=L"μ_1", ylabel=L"μ_2")#,  subtitle = L"\tanh{\left(δE\right)}")
-hm = plot_charge_stability!(ax, csdata_big; colorrange=1, datamap=x -> tanh(x.gap), colormap=:berlin)
-Colorbar(gb[1, 2], hm)
-
-boxax = Axis(gb[1, 1])#, bbox = BBox(1, 2, 3, 4))
-hidedecorations!(boxax)
-linewidth = 2
-linecolor = :black
-lines!(boxax, ssparams.μ1 .+ [-1, 1], ssparams.μ2 .+ [1, 1]; color=linecolor, linewidth)
-lines!(boxax, ssparams.μ1 .+ [-1, 1], ssparams.μ2 .- [1, 1]; color=linecolor, linewidth)
-lines!(boxax, ssparams.μ1 .+ [-1, -1], ssparams.μ2 .+ [-1, 1]; color=linecolor, linewidth)
-lines!(boxax, ssparams.μ1 .+ [1, 1], ssparams.μ2 .+ [-1, 1]; color=linecolor, linewidth)
-linkaxes!(boxax, ax)
-xlims!(first(csdata_big[:μ1]), last(csdata_big[:μ1]))
-ylims!(first(csdata_big[:μ2]), last(csdata_big[:μ2]))
-# ax1 = Axis(gs[1,1], xlabel = L"μ_1", ylabel = "after", fontsize = 1)
-
-spinecolor = NamedTuple(map(x -> x => linecolor, [:bottomspinecolor, :leftspinecolor, :topspinecolor, :rightspinecolor]))
-small_axes = [Axis(gs[1, n]; spinecolor..., spinewidth=linewidth) for (n, ϕ) in enumerate(ϕs)] #subtitle = L"ϕ=%$(round(ϕ,digits=2))" 
-foreach((ax, data) -> plot_charge_stability!(ax, data; datamap), small_axes, csdata_small)
-hidedecorations!.(small_axes)
-ax.xticks = -4:8:4
-
-ax.yticks = -4:8:4
-ax.xticklabelspace = 0.0#tight_xticklabel_spacing!(ax)
-ax.yticklabelspace = 0.0#tight_xticklabel_spacing!(ax)
-rowgap!(g, 5)
-rowsize!(g, 2, Auto(0.4))
-#labels = [Label(gs[1, n, Bottom()], L"ϕ ≈ %$(round(ϕ,digits=2))", padding=(0, 0, -5, 2)) for (n, ϕ) in enumerate(ϕs)]
-labels = [Label(gs[1, n, Bottom()], s, padding=(0, 0, -5, 2)) for (n, s) in enumerate([L"ϕ = ϕ_\star"])]
-
-# Label(gb[1, 1, Top()], "tanh(δE)", valign = :top,
-Label(gb[1, 1, Top()], L"\tanh{(δE)}", valign=:top,
-    padding=(0, 0, 2, -10))
-Label(gs[1, 1:3, Top()], L"\text{Ground state parity}", valign=:bottom,
-    padding=(0, 0, 3, 4))
-
-
-f |> display
-##
-##
-save(plotsdir(string("charge_stability_phase", paramstring, ".pdf")), f, pt_per_unit=1)
-save(plotsdir(string("charge_stability_phase", paramstring, ".png")), f, px_per_unit=4)
-##
-save(plotsdir(string("charge_stability_phase_transparent", paramstring, ".png")), f, px_per_unit=4)
-save(plotsdir(string("charge_stability_phase_transparent", paramstring, ".pdf")), f, pt_per_unit=1)
+csdata_small = [charge_stability_scan((; ssparams..., ϕ), 1.5, 1.5, smallres) for ϕ in ϕs]
 
 ## Horizontal fig
-
 f = Figure(resolution=400 .* (1, 0.9), fontsize=20, backgroundcolor=:white);
 f = Figure(resolution=400 .* (1, 0.9), fontsize=20, backgroundcolor=:transparent);
 g = f[1, 1] = GridLayout()
@@ -105,8 +49,8 @@ spinecolor = NamedTuple(map(x -> x => linecolor, [:bottomspinecolor, :leftspinec
 small_axes = [Axis(gs[n, 1]; spinecolor..., spinewidth=linewidth, aspect=1) for (n, ϕ) in enumerate(ϕs)] #subtitle = L"ϕ=%$(round(ϕ,digits=2))" 
 foreach((ax, data) -> plot_charge_stability!(ax, data; datamap), small_axes, csdata_small)
 hidedecorations!.(small_axes)
-ax.xticks = -4:8:4
-ax.yticks = -4:8:4
+ax.xticks = -2:2:4
+ax.yticks = -2:2:4
 ax.xticklabelspace = 0.0#tight_xticklabel_spacing!(ax)
 ax.yticklabelspace = 0.0#tight_xticklabel_spacing!(ax)
 # rowgap!(g, 5)
@@ -129,5 +73,5 @@ f |> display
 save(plotsdir(string("horizontal_charge_stability_phase", paramstring, ".pdf")), f, pt_per_unit=1)
 save(plotsdir(string("horizontal_charge_stability_phase", paramstring, ".png")), f, px_per_unit=4)
 ##
-save(plotsdir(string("_horizontal_charge_stability_phase_transparent", paramstring, ".png")), f, px_per_unit=4)
+save(plotsdir(string("horizontal_charge_stability_phase_transparent", paramstring, ".png")), f, px_per_unit=4)
 save(plotsdir(string("horizontal_charge_stability_phase_transparent", paramstring, ".pdf")), f, pt_per_unit=1)

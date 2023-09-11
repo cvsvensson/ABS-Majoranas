@@ -12,6 +12,9 @@ cost_energy(energies; minexcgap=0, exp) = cost_gapratio(gapratio(energies...); e
 cost_gapratio(gr; exp) = abs(gr) > 2 * 10.0^(-exp) ? 1.0 + 10^(exp) * abs2(gr) : abs2(gr)
 cost_reduced(reduced) = reduced^2
 
+cost_function_borg(energies, reduced::Number; exp=12.0, minexcgap=0) = (cost_reduced(reduced), 10.0^(2exp)*abs2(gapratio(energies...)))
+
+
 refine_interval((a, b), newmid, α::Number) = refine_interval((a, b), newmid, (α, :hard_limit))
 function refine_interval((a, b), newmid, (α, s)::Tuple{Number,Symbol})
     if s == :hard_limit
@@ -106,6 +109,12 @@ function cost(exp, opt::Optimizer)
         cost_function(sol.energies, opt.target(sol); exp, opt.minexcgap) + opt.extra_cost(args, exp)
     end
 end
+function cost_borg(exp, opt::Optimizer)
+    function _cost(args)
+        sol = solve(opt.hamfunc(args...))
+        cost_function_borg(sol.energies, opt.target(sol); exp, opt.minexcgap)
+    end
+end
 
 function get_sweet_spot(opt::Optimizer)
     refinements = length(opt.exps)
@@ -124,6 +133,34 @@ function get_sweet_spot(opt::Optimizer)
     end
     bc = best_candidate(res)
     return bc
+end
+
+# fitness_schaffer1(x) = (sum(abs2, x), sum(abs2, x .- 2.0))
+# res = bboptimize(fitness_schaffer1; ,
+#             SearchRange=(-10.0, 10.0), NumDimensions=3, ϵ=0.05,
+#             MaxSteps=50000, TraceInterval=1.0, TraceMode=:verbose);
+#             FitnessScheme=ParetoFitnessScheme{2}(is_minimizing=true, aggregator=weightedfitness)
+function get_sweet_spot_borg(opt::Optimizer)
+    refinements = length(opt.exps)
+    SearchRange = map(expand_searchrange, opt.ranges, opt.initials)
+    NumDimensions = length(SearchRange)
+    MaxTime = opt.MaxTime / refinements
+    println("Initial point: ", opt.initials)
+    println("SearchRange: ", SearchRange)
+    res = bboptimize(cost_borg(first(opt.exps), opt), opt.initials; Method=:borg_moea,
+        FitnessScheme=ParetoFitnessScheme{2}(is_minimizing=true), ϵ=0.05,
+        SearchRange, NumDimensions, MaxTime, TraceInterval=10.0, TraceMode=tracemode(opt))
+    for exp in Iterators.drop(opt.exps, 1)
+        ss::typeof(opt.initials) = best_candidate(res)
+        SearchRange = [refine_interval(sr, ss, opt.refinefactor) for (sr, ss) in zip(SearchRange, ss)]
+        println("Sweet spot:", ss)
+        println("SearchRange:", SearchRange)
+        res = bboptimize(cost_borg(exp, opt), ss; Method=:borg_moea,
+        FitnessScheme=ParetoFitnessScheme{2}(is_minimizing=true), ϵ=0.05,
+        SearchRange, NumDimensions, MaxTime, TraceInterval=10.0, TraceMode=tracemode(opt))
+    end
+    bc = best_candidate(res)
+    return res
 end
 ##
 function anti_parallel_sweet_spot(; Δ, tratio, h, U, V, t, MaxTime, exps=collect(range(0.5, 3, length=4)), target)
