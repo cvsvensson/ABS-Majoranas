@@ -201,9 +201,9 @@ function parallel_sweet_spot(; Δ, tratio, h, U, V, t, MaxTime, exps=collect(ran
     return sweet_spot
 end
 
-function sweet_spot_scan((xs, xlabel), (ys, ylabel), get_ss=anti_parallel_sweet_spot; fixedparams, MaxTime, target)
+function sweet_spot_scan((xs, xlabel), (ys, ylabel), get_ss=anti_parallel_sweet_spot; fixedparams, MaxTime, target, exps)
     iter = collect(Base.product(xs, ys))
-    ss = Folds.map((xy) -> get_ss(; fixedparams..., Dict(xlabel => xy[1], ylabel => xy[2])..., MaxTime, target), iter)
+    ss = Folds.map((xy) -> get_ss(; fixedparams..., Dict(xlabel => xy[1], ylabel => xy[2])..., MaxTime, target, exps), iter)
     return Dict(:sweet_spots => ss, :x => xs, :y => ys, :xlabel => xlabel, :ylabel => ylabel,
         :fixedparams => fixedparams, :MaxTime => MaxTime, :target => target)
 end
