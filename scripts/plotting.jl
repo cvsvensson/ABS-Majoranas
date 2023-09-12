@@ -5,8 +5,10 @@ includet(srcdir("plotting.jl"))
 using DataFrames
 resultsUVp = collect_results(datadir("UV-scan", "parallel"))
 resultsUVap = collect_results(datadir("UV-scan", "anti_parallel"))
+resultsUVapborg = collect_results(datadir("UV-scan", "anti_parallel","borg"))
 resultsUhp = collect_results(datadir("Uh-scan", "parallel"))
 resultsUhap = collect_results(datadir("Uh-scan", "anti_parallel"))
+resultsUhapborg = collect_results(datadir("Uh-scan", "anti_parallel","borg"))
 
 
 ## UV
@@ -29,7 +31,7 @@ fig, _, _ = plot_sweet_scan(resultsUhap[1, :]; datamap=x -> x.parameters.ϕ, col
 display(fig)
 
 ##
-scanfig = let data1 = resultsUhap[1, :], data2 = resultsUVap[3, :]
+scanfig = let data1 = resultsUhapborg[1, :], data2 = resultsUVapborg[1, :]
     fig = Figure(; resolution=400 .* (2, 1), fontsize=20, backgroundcolor=:transparent)
     xlabel1 = paramstyle[data1[:xlabel]]
     xlabel2 = paramstyle[data2[:xlabel]]
@@ -55,6 +57,7 @@ end
 
 ##
 ssdata = resultsUhap[2, :]
+ssdata = resultsUhapborg[1, :]
 nx, ny = size(ssdata[:sweet_spots])
 smallres = 100
 positions = map(x -> Int.(floor.((nx, ny) .* x)), [(0.4, 0.7), (0.25, 0.5), (0.25, 0.38), (0.25, 0.33)])
@@ -111,6 +114,7 @@ save(plotsdir(string("uhplot_transparent", fixedparamstring, ".png")), f, px_per
 ######
 ##
 ssdata = resultsUVap[5, :]
+ssdata = resultsUVapborg[1, :]
 nx, ny = size(ssdata[:sweet_spots])
 smallres = 100
 positions = map(x -> Int.(floor.((nx, ny) .* x)), [(0.55, 0.75), (0.25, 0.5), (0.22, 0.1), (0.25, 0.1)])

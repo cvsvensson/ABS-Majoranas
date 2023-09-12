@@ -13,7 +13,7 @@ cost_energy(energies; minexcgap=0, exp) = cost_gapratio(gapratio(energies...); e
 cost_gapratio(gr; exp) = abs(gr) > 2 * 10.0^(-exp) ? 1.0 + 10^(exp) * abs2(gr) : abs2(gr)
 cost_reduced(reduced) = reduced^2
 
-cost_function_borg(energies, reduced::Number; exp=12.0, minexcgap=0) = (cost_reduced(reduced), 10.0^(2exp) * abs2(gapratio(energies...)))
+cost_function_borg(energies, reduced::Number; exp=12.0, minexcgap=0) = (cost_reduced(reduced), 10.0^(exp) * abs2(gapratio(energies...)))
 
 
 refine_interval((a, b), newmid, α::Number) = refine_interval((a, b), newmid, (α, :hard_limit))
@@ -155,6 +155,7 @@ function get_sweet_spot_borg(opt::Optimizer)
         res = bboptimize(cost_borg(exp, opt), ss; Method=:borg_moea,
             FitnessScheme=ParetoFitnessScheme{2}(is_minimizing=true), ϵ=opt.ϵ, PopulationSize=opt.PopulationSize,
             SearchRange, NumDimensions, MaxTime, TraceInterval=10.0, TraceMode=tracemode(opt))
+        println(length(pareto_frontier(res)))
     end
     # bc = best_candidate(res)
     return res

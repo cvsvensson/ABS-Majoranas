@@ -13,15 +13,8 @@ opt = Optimizer(
     MaxTime=5, minexcgap=fixedparams.Δ / 4,
     exps=collect(range(1, 4, length=4)),
     tracemode=:compact,
-    target=LD)
-opt2 = Optimizer(
-    hamfunc=(t, ϕ, μ1, μ2, h) -> abs_hamiltonian(c; μ1, μ2, t, ϕ, h, fixedparams...),
-    ranges=[(0.1, 10.0) .* fixedparams.Δ, (0.0, 2.0π), (0.0, 20.0) .* fixedparams.Δ, (-20.0, 0.0) .* fixedparams.Δ, (1.0, 20.0) .* fixedparams.Δ],
-    initials=[1, π, -fixedparams.Δ, fixedparams.Δ, fixedparams.tratio^-1 * fixedparams.Δ];
-    MaxTime=5, minexcgap=fixedparams.Δ / 4,
-    exps=collect(range(1, 4, length=4)),
-    tracemode=:compact,
-    target=LD)
+    target=LD,
+    ϵ = 0.01)
 # hamfunc=(t, ϕ, μ1, μ2, h) -> (m = Matrix(abs_hamiltonian_odd(c; μ1, μ2, t, ϕ, h, fixedparams...)); [vec(real(m)) vec(imag(m))])
 ss = get_sweet_spot(opt)
 ss2 = get_sweet_spot_borg(opt)
@@ -33,6 +26,12 @@ optsol.reduced.cells
 optsol2.reduced.cells
 optsol.gap
 optsol2.gap
+
+pf = pareto_frontier(ss2)
+best_obj1, idx_obj1 = findmin(map(elm -> fitness(elm)[1], pf))
+best_obj2, idx_obj2 = findmin(map(elm -> fitness(elm)[2], pf))
+bo1_solution = params(pf[idx_obj1]) # get the solution candidate itself...
+bo2_solution = params(pf[idx_obj2]) # get the solution candidate itself...
 
 csdata = charge_stability_scan(merge(fixedparams, NamedTuple(zip((:t, :ϕ, :μ1, :μ2, :h), best_candidate(ss)))), 5, 5)
 csdata2 = charge_stability_scan(merge(fixedparams, NamedTuple(zip((:t, :ϕ, :μ1, :μ2, :h), best_candidate(ss2)))), 5, 5)
