@@ -95,7 +95,7 @@ Base.@kwdef struct Optimizer4{f,r,i,rf}
     tracemode::Symbol = :silent
     extra_cost = (x...) -> 0
     PopulationSize = 100
-    ϵ = 0.001
+    ϵ = 0.01
 end
 Optimizer = Optimizer4
 
@@ -160,7 +160,7 @@ function get_sweet_spot_borg(opt::Optimizer)
     return res
 end
 ##
-function anti_parallel_sweet_spot(; Δ, tratio, h, U, V, t, MaxTime, exps=collect(range(0.5, 3, length=4)), target, PopulationSize=100, ϵ=0.001)
+function anti_parallel_sweet_spot(; Δ, tratio, h, U, V, t, MaxTime, exps=collect(range(0.5, 3, length=4)), target, PopulationSize=100, ϵ=0.01)
     fixedparams = (; Δ, tratio, h, U, V, t)
     pk = kitaev_sweet_spot_guess(; Δ, h, U, V, t, tratio)
     hamfunc(ϕ, μ1, μ2) = abs_hamiltonian(c; μ1, μ2, ϕ, fixedparams...)
