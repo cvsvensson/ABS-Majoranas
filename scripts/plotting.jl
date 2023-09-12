@@ -29,7 +29,7 @@ fig, _, _ = plot_sweet_scan(resultsUhap[1, :]; datamap=x -> x.parameters.ϕ, col
 display(fig)
 
 ##
-scanfig = let data1 = resultsUhap[1, :], data2 = resultsUVap[1, :]
+scanfig = let data1 = resultsUhap[1, :], data2 = resultsUVap[3, :]
     fig = Figure(; resolution=400 .* (2, 1), fontsize=20, backgroundcolor=:transparent)
     xlabel1 = paramstyle[data1[:xlabel]]
     xlabel2 = paramstyle[data2[:xlabel]]
@@ -54,10 +54,10 @@ end
 
 
 ##
-ssdata = resultsUhap[1, :]
+ssdata = resultsUhap[2, :]
 nx, ny = size(ssdata[:sweet_spots])
-smallres = 200
-# positions = map(x -> Int.(floor.((nx, ny) .* x)), [(0.55, 0.75), (0.25, 0.5), (0.22, 0.1), (0.25, 0.1)])
+smallres = 100
+positions = map(x -> Int.(floor.((nx, ny) .* x)), [(0.4, 0.7), (0.25, 0.5), (0.25, 0.38), (0.25, 0.33)])
 positions = map(x -> Int.(floor.((nx, ny) .* x)), [(0.5, 0.8), (0.3, 0.4), (0.1, 0.1)])
 sweet_spots = [ssdata[:sweet_spots][pos...] for pos in positions]
 paramstring = map(ss -> map(x -> round(x, digits=2), ss.parameters), sweet_spots)
@@ -67,8 +67,8 @@ csdata_small = [charge_stability_scan((; ss.parameters...), 0.8, 0.8, smallres; 
 ##
 colors = cgrad(:rainbow, categorical=true)[[1, 2, 5, 4][1:length(csdata_small)]]
 fixedparamstring = map(x -> round(x, digits=2), ssdata[:fixedparams])
-f = Figure(resolution=400 .* (1.4, 1), fontsize=20, backgroundcolor=:white);
 f = Figure(resolution=400 .* (1.4, 1), fontsize=20, backgroundcolor=:transparent);
+f = Figure(resolution=400 .* (1.4, 1), fontsize=20, backgroundcolor=:white);
 g = f[1, 1] = GridLayout()
 gb = g[1, 1] = GridLayout()
 gs = g[1, 2] = GridLayout()
@@ -87,6 +87,7 @@ datamap = x -> sign(x.gap)
 datamap2 = x -> real(x.conductance)[1, 2] * real(x.conductance)[1, 1]
 datamap2 = x -> real(x.conductance)[1, 2] - real(x.conductance)[2, 1]
 datamap2 = x -> real(x.conductance)[1, 2]
+datamap2 = MPU
 spinecolor = [NamedTuple(map(x -> x => colors[n], [:bottomspinecolor, :leftspinecolor, :topspinecolor, :rightspinecolor])) for n in eachindex(csdata_small)]
 small_axes = [Axis(gs[n, 1]; spinecolor[n]..., spinewidth=4, aspect=1) for (n, data) in enumerate(csdata_small)] #subtitle = L"ϕ=%$(round(ϕ,digits=2))" 
 small_axes2 = [Axis(gs[n, 2]; spinecolor[n]..., spinewidth=4, aspect=1) for (n, data) in enumerate(csdata_small)] #subtitle = L"ϕ=%$(round(ϕ,digits=2))" 
@@ -109,22 +110,22 @@ save(plotsdir(string("uhplot_transparent", fixedparamstring, ".png")), f, px_per
 
 ######
 ##
-ssdata = resultsUVap[1, :]
+ssdata = resultsUVap[5, :]
 nx, ny = size(ssdata[:sweet_spots])
-smallres = 200
+smallres = 100
 positions = map(x -> Int.(floor.((nx, ny) .* x)), [(0.55, 0.75), (0.25, 0.5), (0.22, 0.1), (0.25, 0.1)])
-positions = map(x -> Int.(floor.((nx, ny) .* x)), [(0.1, 0.6), (0.4, 0.2), (0.4, 0.4)])
+positions = map(x -> Int.(floor.((nx, ny) .* x)), [(0.1, 0.6), (0.4, 0.2), (0.6, 0.6)])
 sweet_spots = [ssdata[:sweet_spots][pos...] for pos in positions]
 transport = Transport(QuantumDots.Pauli(), (; T=1 / 20, μ=(0.0, 0.0)))
 paramstring = map(ss -> map(x -> round(x, digits=2), ss.parameters), sweet_spots)
 
-csdata_small = [charge_stability_scan((; ss.parameters...), 1, 1, smallres; transport) for ss in sweet_spots]
+csdata_small = [charge_stability_scan((; ss.parameters...,ϕ = ss.parameters.ϕ+0*1.5, μ1 = ss.parameters.μ1 + .2,μ2 = ss.parameters.μ2 + .2), 1.5, 1.5, smallres; transport) for ss in sweet_spots]
 
 ##
 colors = cgrad(:rainbow, categorical=true)[[1, 2, 5, 4][1:length(csdata_small)]]
 fixedparamstring = map(x -> round(x, digits=2), ssdata[:fixedparams])
-f = Figure(resolution=400 .* (1.4, 1), fontsize=20, backgroundcolor=:white);
 f = Figure(resolution=400 .* (1.4, 1), fontsize=20, backgroundcolor=:transparent);
+f = Figure(resolution=400 .* (1.4, 1), fontsize=20, backgroundcolor=:white);
 g = f[1, 1] = GridLayout()
 gb = g[1, 1] = GridLayout()
 gs = g[1, 2] = GridLayout()
@@ -142,12 +143,17 @@ scatter!(ax, map(ss -> ss.parameters[ssdata.xlabel], sweet_spots), map(ss -> ss.
 datamap = x -> sign(x.gap)
 datamap2 = x -> real(x.conductance)[1, 2] * real(x.conductance)[1, 1]
 datamap2 = x -> real(x.conductance)[1, 2] - real(x.conductance)[2, 1]
+datamap2 = MPU
+datamap2 = x -> real(x.conductance)[1, 1]
 datamap2 = x -> real(x.conductance)[1, 2]
 spinecolor = [NamedTuple(map(x -> x => colors[n], [:bottomspinecolor, :leftspinecolor, :topspinecolor, :rightspinecolor])) for n in eachindex(csdata_small)]
 small_axes = [Axis(gs[n, 1]; spinecolor[n]..., spinewidth=4, aspect=1) for (n, data) in enumerate(csdata_small)] #subtitle = L"ϕ=%$(round(ϕ,digits=2))" 
 small_axes2 = [Axis(gs[n, 2]; spinecolor[n]..., spinewidth=4, aspect=1) for (n, data) in enumerate(csdata_small)] #subtitle = L"ϕ=%$(round(ϕ,digits=2))" 
-foreach((ax, data) -> plot_charge_stability!(ax, data; datamap), small_axes, csdata_small)
-foreach((ax, data) -> plot_charge_stability!(ax, data; datamap=datamap2, colormap=:vik, colorrange=2), small_axes2, csdata_small)
+hms = map((ax, data) -> plot_charge_stability!(ax, data; datamap, colorrange = (1,1)), small_axes, csdata_small)
+# map((ax, data) -> contour!(ax, map(datamap,data[:data]); levels = [10.0^(-x) for x in 1:3 ], colorrange = (-1,1),colormap = :berlin), small_axes, csdata_small)
+foreach((n,hm)-> Colorbar(gs[n,3],hm), eachindex(hms),hms)
+map((ax, data) -> plot_charge_stability!(ax, data; datamap=datamap2, colormap=:vik, colorrange=.2), small_axes2, csdata_small)
+
 hidedecorations!.(small_axes)
 hidedecorations!.(small_axes2)
 labels = [Label(gs[n, 1:2, Bottom()], L"MP ≈ %$(round(1-MPU(ss),digits=2))", padding=(0, 0, -15, 4)) for (n, ss) in enumerate(sweet_spots)]

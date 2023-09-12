@@ -6,11 +6,15 @@ using ForwardDiff, LinearSolve # For transport
 const N = 2
 const c = FermionBasis((1, 2), (:↑, :↓); qn=QuantumDots.parity)
 abs_hamiltonian(c; μ1, μ2, Δ, t, tratio, h, ϕ, U, V) = blockdiagonal((QuantumDots.BD1_hamiltonian(c; h, t, μ=(μ1, μ2), Δ=Δ * [exp(1im * ϕ / 2), exp(-1im * ϕ / 2)], Δ1=0, θ=parameter(2atan(tratio), :diff), ϕ=0, U, V)), c)
-
+abs_hamiltonian_odd(c; μ1, μ2, Δ, t, tratio, h, ϕ, U, V) = (n = div(QuantumDots.nbr_of_fermions(c), 2);
+QuantumDots.BD1_hamiltonian(c; h, t, μ=(μ1, μ2), Δ=Δ * [exp(1im * ϕ / 2), exp(-1im * ϕ / 2)], Δ1=0, θ=parameter(2atan(tratio), :diff), ϕ=0, U, V)[1:2^n, 1:2^n])
 cost_function(energies, reduced::Number; exp=12.0, minexcgap=0) = cost_reduced(reduced) + cost_energy(energies; exp, minexcgap)
 cost_energy(energies; minexcgap=0, exp) = cost_gapratio(gapratio(energies...); exp) + ((excgap(energies...) - minexcgap) < 0 ? 1 + abs(excgap(energies...) - minexcgap) : 0)
 cost_gapratio(gr; exp) = abs(gr) > 2 * 10.0^(-exp) ? 1.0 + 10^(exp) * abs2(gr) : abs2(gr)
 cost_reduced(reduced) = reduced^2
+
+cost_function_borg(energies, reduced::Number; exp=12.0, minexcgap=0) = (cost_reduced(reduced), 10.0^(2exp) * abs2(gapratio(energies...)))
+
 
 refine_interval((a, b), newmid, α::Number) = refine_interval((a, b), newmid, (α, :hard_limit))
 function refine_interval((a, b), newmid, (α, s)::Tuple{Number,Symbol})
@@ -41,17 +45,16 @@ function reduced_similarity(basis, oddvec::AbstractVector{T}, evenvec) where {T}
     labels = cell_labels(basis)
     cells = map(n -> norm(QuantumDots.reduced_density_matrix(o, labels(n), basis) -
                           QuantumDots.reduced_density_matrix(e, labels(n), basis)),
-        collect(unique(first.(keys(basis)))))
+        spatial_labels(basis))
     return (; fermions, cells)
 end
 
 function half_majorana_polarizations(majcoeffs, basis)
-    keys1 = sort(unique(first.(collect(keys(basis)))))
+    keys1 = spatial_labels(basis)
     N = length(keys1)
     n = div(N + 1, 2)
-    keys1L = eachindex(keys1)[1:n]
-    keys1L = eachindex(keys1)[1:n]
-    keys1R = eachindex(keys1)[end:-1:end-n+1]
+    keys1L = (keys1)[1:n]
+    keys1R = (keys1)[end:-1:end-n+1]
     keysL = filter(k -> first(k) in keys1L, keys(basis))
     keysR = filter(k -> first(k) in keys1R, keys(basis))
     left = QuantumDots.majorana_polarization(majcoeffs..., keysL)
@@ -69,7 +72,7 @@ function solve(H; basis=c, reduced=true, transport=missing)
     majcoeffs = QuantumDots.majorana_coefficients(oddvecs[:, 1], evenvecs[:, 1], basis)
     mps = half_majorana_polarizations(majcoeffs, basis)
     reduced = reduced ? reduced_similarity(basis, oddvecs[:, 1], evenvecs[:, 1]) : missing
-    conductance = conductance_matrix(transport, eig)
+    conductance = conductance_matrix(transport, eig; basis)
     return (; gap=first(oddvals) - first(evenvals), gapratio=gapratio(oddvals, evenvals), reduced, mps, majcoeffs, energies=(oddvals, evenvals), conductance)
 end
 
@@ -80,8 +83,7 @@ function gapratio(oddvals, evenvals)
     return δE / Δ
 end
 excgap(odd, even) = min(odd[2] - odd[1], even[2] - even[1])
-
-Base.@kwdef struct Optimizer2{f,r,i,rf}
+Base.@kwdef struct Optimizer4{f,r,i,rf}
     hamfunc::f
     ranges::Vector{r}
     initials::Vector{i}
@@ -92,8 +94,10 @@ Base.@kwdef struct Optimizer2{f,r,i,rf}
     target = LD
     tracemode::Symbol = :silent
     extra_cost = (x...) -> 0
+    PopulationSize = 100
+    ϵ = 0.001
 end
-Optimizer = Optimizer2
+Optimizer = Optimizer4
 
 LD(sol) = norm(sol.reduced.cells)^2
 MP(sol) = norm((1 - abs(sol.mps.left.mp)), (1 - abs(sol.mps.right.mp)))
@@ -104,6 +108,12 @@ function cost(exp, opt::Optimizer)
     function _cost(args)
         sol = solve(opt.hamfunc(args...))
         cost_function(sol.energies, opt.target(sol); exp, opt.minexcgap) + opt.extra_cost(args, exp)
+    end
+end
+function cost_borg(exp, opt::Optimizer)
+    function _cost(args)
+        sol = solve(opt.hamfunc(args...))
+        cost_function_borg(sol.energies, opt.target(sol); exp, opt.minexcgap)
     end
 end
 
@@ -122,11 +132,35 @@ function get_sweet_spot(opt::Optimizer)
         println("SearchRange:", SearchRange)
         res = bboptimize(cost(exp, opt), ss; SearchRange, NumDimensions, MaxTime, TraceInterval=10.0, TraceMode=tracemode(opt))
     end
-    bc = best_candidate(res)
-    return bc
+    # bc = best_candidate(res)
+    return res
+end
+
+function get_sweet_spot_borg(opt::Optimizer)
+    refinements = length(opt.exps)
+    SearchRange = map(expand_searchrange, opt.ranges, opt.initials)
+    NumDimensions = length(SearchRange)
+    MaxTime = opt.MaxTime / refinements
+    println("Initial point: ", opt.initials)
+    println("SearchRange: ", SearchRange)
+    res = bboptimize(cost_borg(first(opt.exps), opt), opt.initials;
+        Method=:borg_moea, PopulationSize=opt.PopulationSize,
+        FitnessScheme=ParetoFitnessScheme{2}(is_minimizing=true), ϵ=opt.ϵ,
+        SearchRange, NumDimensions, MaxTime, TraceInterval=10.0, TraceMode=tracemode(opt))
+    for exp in Iterators.drop(opt.exps, 1)
+        ss::typeof(opt.initials) = best_candidate(res)
+        SearchRange = [refine_interval(sr, ss, opt.refinefactor) for (sr, ss) in zip(SearchRange, ss)]
+        println("Sweet spot:", ss)
+        println("SearchRange:", SearchRange)
+        res = bboptimize(cost_borg(exp, opt), ss; Method=:borg_moea,
+            FitnessScheme=ParetoFitnessScheme{2}(is_minimizing=true), ϵ=opt.ϵ, PopulationSize=opt.PopulationSize,
+            SearchRange, NumDimensions, MaxTime, TraceInterval=10.0, TraceMode=tracemode(opt))
+    end
+    # bc = best_candidate(res)
+    return res
 end
 ##
-function anti_parallel_sweet_spot(; Δ, tratio, h, U, V, t, MaxTime, exps=collect(range(0.5, 3, length=4)), target)
+function anti_parallel_sweet_spot(; Δ, tratio, h, U, V, t, MaxTime, exps=collect(range(0.5, 3, length=4)), target, PopulationSize=100, ϵ=0.001)
     fixedparams = (; Δ, tratio, h, U, V, t)
     pk = kitaev_sweet_spot_guess(; Δ, h, U, V, t, tratio)
     hamfunc(ϕ, μ1, μ2) = abs_hamiltonian(c; μ1, μ2, ϕ, fixedparams...)
@@ -137,8 +171,9 @@ function anti_parallel_sweet_spot(; Δ, tratio, h, U, V, t, MaxTime, exps=collec
         MaxTime, exps, target,
         refinefactor=(1, :hard_limit),
         tracemode=:silent,
-        extra_cost=((ϕ, μ1, μ2), e) -> exp(-(e * abs(μ1 - μ2) + 1)^4))
-    ss = get_sweet_spot(opt)
+        extra_cost=((ϕ, μ1, μ2), e) -> exp(-(e * abs(μ1 - μ2) + 1)^4),
+        PopulationSize, ϵ)
+    ss = best_candidate(get_sweet_spot_borg(opt))
     optsol = solve(opt.hamfunc(ss...))
     parameters = merge(fixedparams, NamedTuple(zip((:ϕ, :μ1, :μ2), ss)))
     optimization = opt
@@ -150,7 +185,7 @@ function parallel_sweet_spot(; Δ, tratio, h, U, V, t, MaxTime, exps=collect(ran
     pk = kitaev_sweet_spot_guess(; Δ, h, U, V, t, tratio)
     μinitial = lower ? pk.μ2 : pk.μ1
     μrange = lower ? (-2abs(h) - U, U + V) : (0.0, 1.1 * abs(pk.μ1) + abs(h) + U)
-    hamfunc(ϕ, μ) = abs_hamiltonian(c; μ1 = μ, μ2 = μ, ϕ, fixedparams...)
+    hamfunc(ϕ, μ) = abs_hamiltonian(c; μ1=μ, μ2=μ, ϕ, fixedparams...)
     opt = Optimizer(;
         hamfunc,
         ranges=[(0.0, 1.0π), μrange],
@@ -160,13 +195,13 @@ function parallel_sweet_spot(; Δ, tratio, h, U, V, t, MaxTime, exps=collect(ran
         tracemode=:silent)
     ss = get_sweet_spot(opt)
     optsol = solve(opt.hamfunc(ss...))
-    parameters = merge(fixedparams, NamedTuple(zip((:ϕ, :μ1, :μ2), ss[[1,2,2]])))
+    parameters = merge(fixedparams, NamedTuple(zip((:ϕ, :μ1, :μ2), ss[[1, 2, 2]])))
     optimization = opt
     sweet_spot = merge(optsol, (; parameters, optimization))
     return sweet_spot
 end
 
-function sweet_spot_scan((xs, xlabel), (ys, ylabel), get_ss = anti_parallel_sweet_spot; fixedparams, MaxTime, target)
+function sweet_spot_scan((xs, xlabel), (ys, ylabel), get_ss=anti_parallel_sweet_spot; fixedparams, MaxTime, target)
     iter = collect(Base.product(xs, ys))
     ss = Folds.map((xy) -> get_ss(; fixedparams..., Dict(xlabel => xy[1], ylabel => xy[2])..., MaxTime, target), iter)
     return Dict(:sweet_spots => ss, :x => xs, :y => ys, :xlabel => xlabel, :ylabel => ylabel,
@@ -185,16 +220,18 @@ struct Transport{T,NT}
     type::T
     parameters::NT
 end
-QuantumDots.conductance_matrix(::Missing, eig) = missing
-function QuantumDots.conductance_matrix(t::Transport, eig)
-    leads = get_leads(c, t.parameters...)
+QuantumDots.conductance_matrix(::Missing, eig; kwargs...) = missing
+function QuantumDots.conductance_matrix(t::Transport, eig; basis=c)
+    leads = get_leads(basis, t.parameters...)
     system = t.type(QuantumDots.diagonalize(QuantumDots.OpenSystem(eig, leads)))
     QuantumDots.conductance_matrix(system)
 end
+spatial_labels(basis) = collect(unique(first.(keys(basis))))
 function get_leads(c, T, μ, Γ=1)
-    N = div(QuantumDots.nbr_of_fermions(c), 2)
-    left = QuantumDots.CombinedLead((Γ * c[1, :↑]', Γ * c[1, :↓]'); T, μ=μ[1])
-    right = QuantumDots.CombinedLead((Γ * c[N, :↑]', Γ * c[N, :↓]'); T, μ=μ[2])
+    # N = div(QuantumDots.nbr_of_fermions(c), 2)
+    l = spatial_labels(c)
+    left = QuantumDots.CombinedLead((Γ * c[l[1], :↑]', Γ * c[l[1], :↓]'); T, μ=μ[1])
+    right = QuantumDots.CombinedLead((Γ * c[l[end], :↑]', Γ * c[l[end], :↓]'); T, μ=μ[2])
     return (; left, right)
 end
 
