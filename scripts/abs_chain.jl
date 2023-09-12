@@ -10,24 +10,34 @@ opt = Optimizer(
     hamfunc=(t, ϕ, μ1, μ2, h) -> abs_hamiltonian(c; μ1, μ2, t, ϕ, h, fixedparams...),
     ranges=[(0.1, 10.0) .* fixedparams.Δ, (0.0, 2.0π), (0.0, 20.0) .* fixedparams.Δ, (-20.0, 0.0) .* fixedparams.Δ, (1.0, 20.0) .* fixedparams.Δ],
     initials=[1, π, -fixedparams.Δ, fixedparams.Δ, fixedparams.tratio^-1 * fixedparams.Δ];
-    MaxTime=10, minexcgap=fixedparams.Δ / 4,
-    exps=collect(range(1, 6, length=4)),
+    MaxTime=5, minexcgap=fixedparams.Δ / 4,
+    exps=collect(range(1, 4, length=4)),
     tracemode=:compact,
     target=LD)
 opt2 = Optimizer(
     hamfunc=(t, ϕ, μ1, μ2, h) -> abs_hamiltonian(c; μ1, μ2, t, ϕ, h, fixedparams...),
     ranges=[(0.1, 10.0) .* fixedparams.Δ, (0.0, 2.0π), (0.0, 20.0) .* fixedparams.Δ, (-20.0, 0.0) .* fixedparams.Δ, (1.0, 20.0) .* fixedparams.Δ],
     initials=[1, π, -fixedparams.Δ, fixedparams.Δ, fixedparams.tratio^-1 * fixedparams.Δ];
-    MaxTime=10, minexcgap=fixedparams.Δ / 4,
-    exps=collect(range(1, 6, length=4)),
+    MaxTime=5, minexcgap=fixedparams.Δ / 4,
+    exps=collect(range(1, 4, length=4)),
     tracemode=:compact,
     target=LD)
-
+# hamfunc=(t, ϕ, μ1, μ2, h) -> (m = Matrix(abs_hamiltonian_odd(c; μ1, μ2, t, ϕ, h, fixedparams...)); [vec(real(m)) vec(imag(m))])
 ss = get_sweet_spot(opt)
 ss2 = get_sweet_spot_borg(opt)
-optsol = solve(opt.hamfunc(ss...); transport)
-csdata = charge_stability_scan(merge(fixedparams, NamedTuple(zip((:t, :ϕ, :μ1, :μ2, :h), ss))), 5, 5)
+optsol = solve(opt.hamfunc(best_candidate(ss)...); transport)
+optsol2 = solve(opt.hamfunc(best_candidate(ss2)...); transport)
+optsol.mps
+optsol2.mps
+optsol.reduced.cells
+optsol2.reduced.cells
+optsol.gap
+optsol2.gap
+
+csdata = charge_stability_scan(merge(fixedparams, NamedTuple(zip((:t, :ϕ, :μ1, :μ2, :h), best_candidate(ss)))), 5, 5)
+csdata2 = charge_stability_scan(merge(fixedparams, NamedTuple(zip((:t, :ϕ, :μ1, :μ2, :h), best_candidate(ss2)))), 5, 5)
 plot_charge_stability(csdata)[1]
+plot_charge_stability(csdata2)[1]
 
 ##
 pss = parallel_sweet_spot(; U=2, V=0.01, Δ=1, tratio=0.2, t=0.5, h=1.5, MaxTime=5, target=LD)
