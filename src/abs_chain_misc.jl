@@ -10,10 +10,10 @@ abs_hamiltonian_odd(c; μ1, μ2, Δ, t, tratio, h, ϕ, U, V) = (n = div(QuantumD
 QuantumDots.BD1_hamiltonian(c; h, t, μ=(μ1, μ2), Δ=Δ * [exp(1im * ϕ / 2), exp(-1im * ϕ / 2)], Δ1=0, θ=parameter(2atan(tratio), :diff), ϕ=0, U, V)[1:2^n, 1:2^n])
 cost_function(energies, reduced::Number; exp=12.0, minexcgap=0) = cost_reduced(reduced) + cost_energy(energies; exp, minexcgap)
 cost_energy(energies; minexcgap=0, exp) = cost_gapratio(gapratio(energies...); exp) + ((excgap(energies...) - minexcgap) < 0 ? 1 + abs(excgap(energies...) - minexcgap) : 0)
-cost_gapratio(gr; exp) = abs(gr) > 2 * 10.0^(-exp) ? 1.0 + 10^(exp) * abs2(gr) : abs2(gr)
+cost_gapratio(gr; exp) = abs(gr) > 2 * 10.0^(-exp) ? 1.0 + 10^(exp) * abs2(gr) : 0.0
 cost_reduced(reduced) = reduced^2
 
-cost_function_borg(energies, reduced::Number; exp=12.0, minexcgap=0) = (cost_reduced(reduced), 10.0^(2exp) * abs2(gapratio(energies...)))
+cost_function_borg(energies, reduced::Number; exp=12.0, minexcgap=0) = (cost_reduced(reduced), 10.0^(exp) * abs2(gapratio(energies...)))
 
 
 refine_interval((a, b), newmid, α::Number) = refine_interval((a, b), newmid, (α, :hard_limit))
@@ -95,7 +95,7 @@ Base.@kwdef struct Optimizer4{f,r,i,rf}
     tracemode::Symbol = :silent
     extra_cost = (x...) -> 0
     PopulationSize = 100
-    ϵ = 0.001
+    ϵ = 0.01
 end
 Optimizer = Optimizer4
 
@@ -155,12 +155,13 @@ function get_sweet_spot_borg(opt::Optimizer)
         res = bboptimize(cost_borg(exp, opt), ss; Method=:borg_moea,
             FitnessScheme=ParetoFitnessScheme{2}(is_minimizing=true), ϵ=opt.ϵ, PopulationSize=opt.PopulationSize,
             SearchRange, NumDimensions, MaxTime, TraceInterval=10.0, TraceMode=tracemode(opt))
+        println(length(pareto_frontier(res)))
     end
     # bc = best_candidate(res)
     return res
 end
 ##
-function anti_parallel_sweet_spot(; Δ, tratio, h, U, V, t, MaxTime, exps=collect(range(0.5, 3, length=4)), target, PopulationSize=100, ϵ=0.001)
+function anti_parallel_sweet_spot(; Δ, tratio, h, U, V, t, MaxTime, exps=collect(range(0.5, 3, length=4)), target, PopulationSize=100, ϵ=0.01)
     fixedparams = (; Δ, tratio, h, U, V, t)
     pk = kitaev_sweet_spot_guess(; Δ, h, U, V, t, tratio)
     hamfunc(ϕ, μ1, μ2) = abs_hamiltonian(c; μ1, μ2, ϕ, fixedparams...)
@@ -173,7 +174,7 @@ function anti_parallel_sweet_spot(; Δ, tratio, h, U, V, t, MaxTime, exps=collec
         tracemode=:silent,
         extra_cost=((ϕ, μ1, μ2), e) -> exp(-(e * abs(μ1 - μ2) + 1)^4),
         PopulationSize, ϵ)
-    ss = best_candidate(get_sweet_spot_borg(opt))
+    ss = best_candidate(get_sweet_spot(opt))
     optsol = solve(opt.hamfunc(ss...))
     parameters = merge(fixedparams, NamedTuple(zip((:ϕ, :μ1, :μ2), ss)))
     optimization = opt
