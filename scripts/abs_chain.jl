@@ -5,7 +5,7 @@ includet(srcdir("plotting.jl"))
 
 transport = Transport(QuantumDots.Pauli(), (; T=1 / 40, μ=(0.0, 0.0)))
 ## Example
-fixedparams = (; U=2, V=0.01, Δ=1, tratio=0.2, t=0.5)
+fixedparams = (; U=(2.0,3.0), V=0.01, Δ=(1.0,2.0), tratio=0.2, t=0.5)
 opt = Optimizer(
     hamfunc=(t, ϕ, μ1, μ2, h) -> abs_hamiltonian(c; μ1, μ2, t, ϕ, h, fixedparams...),
     ranges=[(0.1, 10.0) .* first(fixedparams.Δ), (0.0, 2.0π), (0.0, 20.0) .* first(fixedparams.Δ), (-20.0, 0.0) .* first(fixedparams.Δ), (1.0, 20.0) .* first(fixedparams.Δ)],
@@ -94,7 +94,7 @@ end
 
 ##
 pss = parallel_sweet_spot(; U=2, V=0.01, Δ=1, tratio=0.2, t=0.5, h=1.5, MaxTime=5, target=LD)
-apss = anti_parallel_sweet_spot(; U=2, V=0.01, Δ=1, tratio=0.2, t=0.5, h=1.5, MaxTime=5, target=LD)
+apss = anti_parallel_sweet_spot(; U=(2.0,1.0), V=0.01, Δ=(1.0,1.1), tratio=0.2, t=0.5, h=(1.5,1.2), MaxTime=5, target=LD)
 LD(pss) #bad
 MP(pss) #bad
 LD(apss) #Small is good

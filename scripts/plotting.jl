@@ -39,7 +39,7 @@ display(fig)
 
 
 ##
-for n in 1:10
+for n in 1:3
 scanfig = let data1 = resultsUhap[n, :], data2 = resultsUVap[n, :]
     fig = Figure(; resolution=400 .* (2, 1), fontsize=20, backgroundcolor=:white)
     xlabel1 = paramstyle[data1[:xlabel]]

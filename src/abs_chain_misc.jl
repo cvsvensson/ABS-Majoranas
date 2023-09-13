@@ -148,9 +148,11 @@ function anti_parallel_sweet_spot(; Δ, tratio, h, U, V, t, MaxTime, exps=collec
     μ1, μ2 = kitaev_μ_zero(Δ, h, U)
     ϕ = 0.5 * pi
     hamfunc(ϕ, μ1, μ2) = abs_hamiltonian(c; μ1, μ2, ϕ, fixedparams...)
+    maxh = max(abs.(h)...)
+    maxU = max(abs.(U)...)
     opt = Optimizer(;
         hamfunc,
-        ranges=[(0.0, 1.0π), (0.0, 1.1 * μ1 + abs(h) + U), (-abs(2h) - U + μ2, U + V)],
+        ranges=[(0.0, 1.0π), (0.0, 1.1 * μ1 + maxh + maxU), (-maxh - maxU + μ2, maxU + V)],
         initials=Float64.([ϕ, μ1, μ2]),
         MaxTime, exps, target,
         tracemode=:silent,
@@ -273,7 +275,7 @@ function kitaev_sweet_spot_guess(; t, tratio, Δ, U, V, h)
     (; μ1=bc[1], μ2=bc[2], ϕ=bc[3])
 end
 
-kitaev_μ_zero(Δ, h, U) = U / 2 .+ (1, -1) .* (sqrt(abs(-4Δ^2 + U^2 + 4h * U + 4h^2)) / 2)
+kitaev_μ_zero(Δ, h, U) = @. U / 2 + (1, -1) * (sqrt(abs(-4Δ^2 + U^2 + 4h * U + 4h^2)) / 2)
 
 function sweet_spot_ϕ(; t, tratio, μ, Δ, V)
     μ1, μ2 = μ

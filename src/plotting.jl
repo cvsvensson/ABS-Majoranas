@@ -33,9 +33,6 @@ function plot_charge_stability!(f, data; kwargs...)
     ylabel = paramstyle[:μ2]
     ax = Axis(f; xlabel, ylabel)
     hm = plot_charge_stability!(ax, data; kwargs...)
-    # if colorbar
-    #     Colorbar(fig[pos[1], pos[2]+1], hm)
-    # end
     return ax, hm
 end
 function plot_charge_stability!(ax::Axis, data; datamap=x -> x.gap, colormap=:berlin, kwargs...)
