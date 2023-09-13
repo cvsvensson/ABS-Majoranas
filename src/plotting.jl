@@ -38,11 +38,11 @@ function plot_charge_stability!(f, data; kwargs...)
     # end
     return ax, hm
 end
-function plot_charge_stability!(ax::Axis, data; datamap=x -> x.gap, colormap=:berlin, colorrange=0.5)
+function plot_charge_stability!(ax::Axis, data; datamap=x -> x.gap, colormap=:berlin, kwargs...)
     x = data[:μ1]
     y = data[:μ2]
     gaps = map(datamap, data[:data])
-    hm = heatmap!(ax, x, y, gaps; colormap, colorrange=(-1, 1) .* colorrange)
+    hm = heatmap!(ax, x, y, gaps; colormap, kwargs...)
     return hm
 end
 

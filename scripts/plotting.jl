@@ -5,22 +5,10 @@ includet(srcdir("plotting.jl"))
 using DataFrames
 resultsUVp = collect_results(datadir("UV-scan", "parallel"))
 resultsUhp = collect_results(datadir("Uh-scan", "parallel"))
-resultsUVap = collect_results(datadir("UV-scan", "anti_parallel"))
-resultsUhap = collect_results(datadir("Uh-scan", "anti_parallel"))
-resultsUVap2 = collect_results(datadir("UV-scan", "anti_parallel2"))
-resultsUhap2 = collect_results(datadir("Uh-scan", "anti_parallel2"))
-resultsUVap3 = collect_results(datadir("UV-scan", "anti_parallel3"))
-resultsUhap3 = collect_results(datadir("Uh-scan", "anti_parallel3"))
-resultsUVap4 = collect_results(datadir("UV-scan", "anti_parallel4"))
-resultsUhap4 = collect_results(datadir("Uh-scan", "anti_parallel4"))
-resultsUVap5 = collect_results(datadir("UV-scan", "anti_parallel5"))
-resultsUhap5 = collect_results(datadir("Uh-scan", "anti_parallel5"))
-resultsUVap6 = collect_results(datadir("UV-scan", "anti_parallel6"))
-resultsUhap6 = collect_results(datadir("Uh-scan", "anti_parallel6"))
-resultsUVap7 = collect_results(datadir("UV-scan", "anti_parallel7"))
-resultsUhap7 = collect_results(datadir("Uh-scan", "anti_parallel7"))
-resultsUVap8 = collect_results(datadir("UV-scan", "anti_parallel8"))
-resultsUhap8 = collect_results(datadir("Uh-scan", "anti_parallel8"))
+# Methods = [:generating_set_search, :probabilistic_descent, :adaptive_de_rand_1_bin_radiuslimited]
+resultsUVap = collect_results(datadir("UV-scan", "anti_parallel","methods")) 
+resultsUhap = collect_results(datadir("Uh-scan", "anti_parallel","methods"))
+
 resultsUVapborg = collect_results(datadir("UV-scan", "anti_parallel","borg"))
 resultsUhapborg = collect_results(datadir("Uh-scan", "anti_parallel","borg"))
 resultsUVapborg2 = collect_results(datadir("UV-scan", "anti_parallel","borg2"))
@@ -47,8 +35,13 @@ fig, _, _ = plot_sweet_scan(resultsUhap[1, :]; datamap=x -> x.parameters.ϕ, col
 display(fig)
 
 ##
-scanfig = let data1 = resultsUhap7[1, :], data2 = resultsUVap7[1, :]
-    fig = Figure(; resolution=400 .* (2, 1), fontsize=20, backgroundcolor=:transparent)
+    
+
+
+##
+for n in 1:10
+scanfig = let data1 = resultsUhap[n, :], data2 = resultsUVap[n, :]
+    fig = Figure(; resolution=400 .* (2, 1), fontsize=20, backgroundcolor=:white)
     xlabel1 = paramstyle[data1[:xlabel]]
     xlabel2 = paramstyle[data2[:xlabel]]
     ylabel1 = paramstyle[data1[:ylabel]]
@@ -56,20 +49,22 @@ scanfig = let data1 = resultsUhap7[1, :], data2 = resultsUVap7[1, :]
     ax1 = Axis(fig[1, 1]; xlabel=xlabel1, ylabel=ylabel1)
     ax2 = Axis(fig[1, 2]; xlabel=xlabel2, ylabel=ylabel2)
     g = fig[1, 1:3] = GridLayout()
-    hm1 = plot_sweet_scan!(ax1, data1)
-    hm2 = plot_sweet_scan!(ax2, data2)
+    hm1 = plot_sweet_scan!(ax1, data1)#; datamap = x->abs(x.gap), colorrange = (1e-5,1))
+    hm2 = plot_sweet_scan!(ax2, data2)#; datamap = x->abs(x.gap), colorrange = (1e-5,1))
     label = L"1-\text{MP}"
     add_exp_colorbar!(fig[1, 3], hm1;)
     paramstring1 = map(x -> round(x, digits=2), data1[:fixedparams])
     paramstring2 = map(x -> round(x, digits=2), data2[:fixedparams])
 
     supertitle = Label(fig[1, 3, Top()], label, fontsize=25, padding=(0, 0, 8, 0))
+    supertitle2 = Label(fig[1, 1, Top()], string(data1[:sweet_spots][1].optimization.Method), fontsize=20, padding=(0, 0, 8, 0))
+    supertitle2 = Label(fig[1, 2, Top()], string(data2[:sweet_spots][1].optimization.Method), fontsize=20, padding=(0, 0, 8, 0))
     colgap!(fig.layout, 1, 16)
     colgap!(fig.layout, 2, 10)
     #save(plotsdir(string("uhvplot_transparent", paramstring1, "_", paramstring2, ".png")), fig, px_per_unit=4)
-    fig
+    fig|>display
 end
-
+end
 
 ##
 ssdata = resultsUhap[2, :]

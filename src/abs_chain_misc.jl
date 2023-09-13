@@ -5,7 +5,7 @@ using ForwardDiff, LinearSolve # For transport
 
 const N = 2
 const c = FermionBasis((1, 2), (:↑, :↓); qn=QuantumDots.parity)
-abs_hamiltonian(c; μ1, μ2, Δ, t, tratio, h, ϕ, U, V) = blockdiagonal((QuantumDots.BD1_hamiltonian(c; h, t, μ=(μ1, μ2), Δ=Δ * [exp(1im * ϕ / 2), exp(-1im * ϕ / 2)], Δ1=0, θ=parameter(2atan(tratio), :diff), ϕ=0, U, V)), c)
+abs_hamiltonian(c; μ1, μ2, Δ, t, tratio, h, ϕ, U, V) = blockdiagonal((QuantumDots.BD1_hamiltonian(c; h, t, μ=(μ1, μ2), Δ=Δ .* [exp(1im * ϕ / 2), exp(-1im * ϕ / 2)], Δ1=0, θ=parameter(2atan(tratio), :diff), ϕ=0, U, V)), c)
 cost_function(energies, reduced::Number; exp=12.0, minexcgap=0) = cost_reduced(reduced) + cost_energy(energies; exp, minexcgap)
 cost_energy(energies; minexcgap=0, exp) = cost_gapratio(gapratio(energies...); exp) + ((excgap(energies...) - minexcgap) < 0 ? 1 + abs(excgap(energies...) - minexcgap) : 0)
 cost_gapratio(gr; exp) = abs(gr) > 2 * 10.0^(-exp) ? 1.0 + 10^(exp) * abs2(gr) : abs2(gr)
@@ -19,10 +19,9 @@ cell_labels(basis) = Base.Fix2(cell_labels, basis)
 function reduced_similarity(basis, oddvec::AbstractVector{T}, evenvec) where {T}
     o = oddvec * oddvec'
     e = evenvec * evenvec'
-    fermions = map(label -> norm(QuantumDots.reduced_density_matrix(o, (label,), basis) - QuantumDots.reduced_density_matrix(e, (label,), basis)), keys(basis.dict))
+    fermions = map(label -> norm(QuantumDots.reduced_density_matrix(o - e, (label,), basis)), keys(basis.dict))
     labels = cell_labels(basis)
-    cells = map(n -> norm(QuantumDots.reduced_density_matrix(o, labels(n), basis) -
-                          QuantumDots.reduced_density_matrix(e, labels(n), basis)),
+    cells = map(n -> norm(QuantumDots.reduced_density_matrix(o - e, labels(n), basis)),
         spatial_labels(basis))
     return (; fermions, cells)
 end

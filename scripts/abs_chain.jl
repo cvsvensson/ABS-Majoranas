@@ -8,9 +8,9 @@ transport = Transport(QuantumDots.Pauli(), (; T=1 / 40, μ=(0.0, 0.0)))
 fixedparams = (; U=2, V=0.01, Δ=1, tratio=0.2, t=0.5)
 opt = Optimizer(
     hamfunc=(t, ϕ, μ1, μ2, h) -> abs_hamiltonian(c; μ1, μ2, t, ϕ, h, fixedparams...),
-    ranges=[(0.1, 10.0) .* fixedparams.Δ, (0.0, 2.0π), (0.0, 20.0) .* fixedparams.Δ, (-20.0, 0.0) .* fixedparams.Δ, (1.0, 20.0) .* fixedparams.Δ],
-    initials=[1, π, fixedparams.Δ, -fixedparams.Δ, fixedparams.tratio^-1 * fixedparams.Δ];
-    MaxTime=5, minexcgap=fixedparams.Δ / 4,
+    ranges=[(0.1, 10.0) .* first(fixedparams.Δ), (0.0, 2.0π), (0.0, 20.0) .* first(fixedparams.Δ), (-20.0, 0.0) .* first(fixedparams.Δ), (1.0, 20.0) .* first(fixedparams.Δ)],
+    initials=[1, π, first(fixedparams.Δ), -first(fixedparams.Δ), fixedparams.tratio^-1 * first(fixedparams.Δ)];
+    MaxTime=5, minexcgap=first(fixedparams.Δ) / 4,
     exps=collect(range(0.1, 4, length=4)),
     tracemode=:compact,
     target=LD,
