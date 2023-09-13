@@ -6,35 +6,13 @@ using ForwardDiff, LinearSolve # For transport
 const N = 2
 const c = FermionBasis((1, 2), (:↑, :↓); qn=QuantumDots.parity)
 abs_hamiltonian(c; μ1, μ2, Δ, t, tratio, h, ϕ, U, V) = blockdiagonal((QuantumDots.BD1_hamiltonian(c; h, t, μ=(μ1, μ2), Δ=Δ * [exp(1im * ϕ / 2), exp(-1im * ϕ / 2)], Δ1=0, θ=parameter(2atan(tratio), :diff), ϕ=0, U, V)), c)
-abs_hamiltonian_odd(c; μ1, μ2, Δ, t, tratio, h, ϕ, U, V) = (n = div(QuantumDots.nbr_of_fermions(c), 2);
-QuantumDots.BD1_hamiltonian(c; h, t, μ=(μ1, μ2), Δ=Δ * [exp(1im * ϕ / 2), exp(-1im * ϕ / 2)], Δ1=0, θ=parameter(2atan(tratio), :diff), ϕ=0, U, V)[1:2^n, 1:2^n])
 cost_function(energies, reduced::Number; exp=12.0, minexcgap=0) = cost_reduced(reduced) + cost_energy(energies; exp, minexcgap)
 cost_energy(energies; minexcgap=0, exp) = cost_gapratio(gapratio(energies...); exp) + ((excgap(energies...) - minexcgap) < 0 ? 1 + abs(excgap(energies...) - minexcgap) : 0)
-cost_gapratio(gr; exp) = abs(gr) > 2 * 10.0^(-exp) ? 1.0 + 10^(exp) * abs2(gr) : 0.0
+cost_gapratio(gr; exp) = abs(gr) > 2 * 10.0^(-exp) ? 1.0 + 10^(exp) * abs2(gr) : abs2(gr)
 cost_reduced(reduced) = reduced^2
 
 cost_function_borg(energies, reduced::Number; exp=12.0, minexcgap=0) = (cost_reduced(reduced), 10.0^(exp) * abs2(gapratio(energies...)))
 
-
-refine_interval((a, b), newmid, α::Number) = refine_interval((a, b), newmid, (α, :hard_limit))
-function refine_interval((a, b), newmid, (α, s)::Tuple{Number,Symbol})
-    if s == :hard_limit
-        r = abs(α * (a - b) / 2)
-        return (max(newmid - r, a), min(newmid + r, b))
-    elseif s == :soft_limit
-        r = abs(α * (a - b) / 2)
-        return (newmid - r, newmid + r)
-    else
-        error("Option $s not supported. Supported options are :hard_limit and :soft_limit.")
-    end
-end
-function expand_searchrange(range, init::Number)
-    if first(range) < init < last(range)
-        return range
-    else
-        return range .+ init .- sum(range) / 2
-    end
-end
 
 cell_labels(n, basis) = Tuple(keys(QuantumDots.cell(n, basis)))
 cell_labels(basis) = Base.Fix2(cell_labels, basis)
@@ -53,8 +31,8 @@ function half_majorana_polarizations(majcoeffs, basis)
     keys1 = spatial_labels(basis)
     N = length(keys1)
     n = div(N + 1, 2)
-    keys1L = (keys1)[1:n]
-    keys1R = (keys1)[end:-1:end-n+1]
+    keys1L = keys1[1:n]
+    keys1R = keys1[end:-1:end-n+1]
     keysL = filter(k -> first(k) in keys1L, keys(basis))
     keysR = filter(k -> first(k) in keys1R, keys(basis))
     left = QuantumDots.majorana_polarization(majcoeffs..., keysL)
@@ -83,25 +61,26 @@ function gapratio(oddvals, evenvals)
     return δE / Δ
 end
 excgap(odd, even) = min(odd[2] - odd[1], even[2] - even[1])
-Base.@kwdef struct Optimizer4{f,r,i,rf}
+Base.@kwdef struct Optimizer1{f,r,i,t,ec}
     hamfunc::f
     ranges::Vector{r}
     initials::Vector{i}
     MaxTime::Int = 10
     minexcgap::Float64 = 0.0
-    exps::Vector{Float64} = Float64.(collect(range(1, 9; length=4)))
-    refinefactor::rf = 0.5
-    target = LD
+    exps::Vector{Float64} = Float64.(collect(range(0.5, 3; length=4)))
+    # refinefactor::rf = 0.5
+    target::t = LD
     tracemode::Symbol = :silent
-    extra_cost = (x...) -> 0
-    PopulationSize = 100
-    ϵ = 0.01
+    extra_cost::ec = (x...) -> 0
+    Method::Symbol = :probabilistic_descent
+    PopulationSize::Int = 100
+    ϵ::Float64 = 0.01
 end
-Optimizer = Optimizer4
+Optimizer = Optimizer1
 
 LD(sol) = norm(sol.reduced.cells)^2
-MP(sol) = norm((1 - abs(sol.mps.left.mp)), (1 - abs(sol.mps.right.mp)))
-MPU(sol) = norm((1 - abs(sol.mps.left.mpu)), (1 - abs(sol.mps.right.mpu)))
+MP(sol) = 1 - (abs(sol.mps.left.mp) + abs(sol.mps.right.mp)) / 2 #norm((1 - abs(sol.mps.left.mp)), (1 - abs(sol.mps.right.mp)))
+MPU(sol) = 1 - (abs(sol.mps.left.mpu) + abs(sol.mps.right.mpu)) / 2 #norm((1 - abs(sol.mps.left.mpu)), (1 - abs(sol.mps.right.mpu)))
 
 tracemode(opt::Optimizer) = opt.tracemode
 function cost(exp, opt::Optimizer)
@@ -119,26 +98,32 @@ end
 
 function get_sweet_spot(opt::Optimizer)
     refinements = length(opt.exps)
-    SearchRange = map(expand_searchrange, opt.ranges, opt.initials)
+    SearchRange = opt.ranges #map(expand_searchrange, opt.ranges, opt.initials)
     NumDimensions = length(SearchRange)
     MaxTime = opt.MaxTime / refinements
     println("Initial point: ", opt.initials)
     println("SearchRange: ", SearchRange)
-    res = bboptimize(cost(first(opt.exps), opt), opt.initials; SearchRange, NumDimensions, MaxTime, TraceInterval=10.0, TraceMode=tracemode(opt))
+    Method = opt.Method
+    res = bboptimize(cost(first(opt.exps), opt), opt.initials;
+        SearchRange, NumDimensions, MaxTime, TraceInterval=10.0,
+        TraceMode=tracemode(opt),
+        Method, PopulationSize=opt.PopulationSize)
     for exp in Iterators.drop(opt.exps, 1)
         ss::typeof(opt.initials) = best_candidate(res)
-        SearchRange = [refine_interval(sr, ss, opt.refinefactor) for (sr, ss) in zip(SearchRange, ss)]
+        #SearchRange = [refine_interval(sr, ss, opt.refinefactor) for (sr, ss) in zip(SearchRange, ss)]
         println("Sweet spot:", ss)
         println("SearchRange:", SearchRange)
-        res = bboptimize(cost(exp, opt), ss; SearchRange, NumDimensions, MaxTime, TraceInterval=10.0, TraceMode=tracemode(opt))
+        res = bboptimize(cost(exp, opt), ss; SearchRange, NumDimensions,
+            MaxTime, TraceInterval=10.0, TraceMode=tracemode(opt),
+            Method,
+            PopulationSize=opt.PopulationSize)
     end
-    # bc = best_candidate(res)
     return res
 end
 
 function get_sweet_spot_borg(opt::Optimizer)
     refinements = length(opt.exps)
-    SearchRange = map(expand_searchrange, opt.ranges, opt.initials)
+    SearchRange = opt.ranges#map(expand_searchrange, opt.ranges, opt.initials)
     NumDimensions = length(SearchRange)
     MaxTime = opt.MaxTime / refinements
     println("Initial point: ", opt.initials)
@@ -149,7 +134,6 @@ function get_sweet_spot_borg(opt::Optimizer)
         SearchRange, NumDimensions, MaxTime, TraceInterval=10.0, TraceMode=tracemode(opt))
     for exp in Iterators.drop(opt.exps, 1)
         ss::typeof(opt.initials) = best_candidate(res)
-        SearchRange = [refine_interval(sr, ss, opt.refinefactor) for (sr, ss) in zip(SearchRange, ss)]
         println("Sweet spot:", ss)
         println("SearchRange:", SearchRange)
         res = bboptimize(cost_borg(exp, opt), ss; Method=:borg_moea,
@@ -157,23 +141,22 @@ function get_sweet_spot_borg(opt::Optimizer)
             SearchRange, NumDimensions, MaxTime, TraceInterval=10.0, TraceMode=tracemode(opt))
         println(length(pareto_frontier(res)))
     end
-    # bc = best_candidate(res)
     return res
 end
 ##
-function anti_parallel_sweet_spot(; Δ, tratio, h, U, V, t, MaxTime, exps=collect(range(0.5, 3, length=4)), target, PopulationSize=100, ϵ=0.01)
+function anti_parallel_sweet_spot(; Δ, tratio, h, U, V, t, MaxTime, exps=collect(range(0.5, 3, length=4)), target, kwargs...)
     fixedparams = (; Δ, tratio, h, U, V, t)
-    pk = kitaev_sweet_spot_guess(; Δ, h, U, V, t, tratio)
+    μ1, μ2 = kitaev_μ_zero(Δ, h, U)
+    ϕ = 0.5 * pi
     hamfunc(ϕ, μ1, μ2) = abs_hamiltonian(c; μ1, μ2, ϕ, fixedparams...)
     opt = Optimizer(;
         hamfunc,
-        ranges=[(0.0, 1.0π), (0.0, 1.1 * pk.μ1 + abs(h) + U), (-abs(2h) - U, U + V)],
-        initials=Float64.([pk.ϕ, pk.μ1, pk.μ2]),
+        ranges=[(0.0, 1.0π), (0.0, 1.1 * μ1 + abs(h) + U), (-abs(2h) - U + μ2, U + V)],
+        initials=Float64.([ϕ, μ1, μ2]),
         MaxTime, exps, target,
-        refinefactor=(1, :hard_limit),
         tracemode=:silent,
-        extra_cost=((ϕ, μ1, μ2), e) -> exp(-(e * abs(μ1 - μ2) + 1)^4),
-        PopulationSize, ϵ)
+        extra_cost=((ϕ, μ1, μ2), e) -> exp(-(e * abs(μ1 - μ2) + 1)^4) + e * (μ2 > μ1) * (μ2 - μ1),
+        kwargs...)
     ss = best_candidate(get_sweet_spot(opt))
     optsol = solve(opt.hamfunc(ss...))
     parameters = merge(fixedparams, NamedTuple(zip((:ϕ, :μ1, :μ2), ss)))
@@ -202,9 +185,9 @@ function parallel_sweet_spot(; Δ, tratio, h, U, V, t, MaxTime, exps=collect(ran
     return sweet_spot
 end
 
-function sweet_spot_scan((xs, xlabel), (ys, ylabel), get_ss=anti_parallel_sweet_spot; fixedparams, MaxTime, target, exps)
+function sweet_spot_scan((xs, xlabel), (ys, ylabel), get_ss=anti_parallel_sweet_spot; fixedparams, MaxTime, target, kwargs...)
     iter = collect(Base.product(xs, ys))
-    ss = Folds.map((xy) -> get_ss(; fixedparams..., Dict(xlabel => xy[1], ylabel => xy[2])..., MaxTime, target, exps), iter)
+    ss = Folds.map((xy) -> get_ss(; fixedparams..., Dict(xlabel => xy[1], ylabel => xy[2])..., MaxTime, target, kwargs...), iter)
     return Dict(:sweet_spots => ss, :x => xs, :y => ys, :xlabel => xlabel, :ylabel => ylabel,
         :fixedparams => fixedparams, :MaxTime => MaxTime, :target => target)
 end
@@ -291,7 +274,7 @@ function kitaev_sweet_spot_guess(; t, tratio, Δ, U, V, h)
     (; μ1=bc[1], μ2=bc[2], ϕ=bc[3])
 end
 
-kitaev_μ_zero(Δ, h, U) = U / 2 .+ (1, -1) .* (sqrt(-4Δ^2 + U^2 + 4h * U + 4h^2) / 2)
+kitaev_μ_zero(Δ, h, U) = U / 2 .+ (1, -1) .* (sqrt(abs(-4Δ^2 + U^2 + 4h * U + 4h^2)) / 2)
 
 function sweet_spot_ϕ(; t, tratio, μ, Δ, V)
     μ1, μ2 = μ
