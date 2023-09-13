@@ -4,11 +4,27 @@ includet(srcdir("abs_chain_misc.jl"))
 includet(srcdir("plotting.jl"))
 using DataFrames
 resultsUVp = collect_results(datadir("UV-scan", "parallel"))
-resultsUVap = collect_results(datadir("UV-scan", "anti_parallel"))
-resultsUVapborg = collect_results(datadir("UV-scan", "anti_parallel","borg"))
 resultsUhp = collect_results(datadir("Uh-scan", "parallel"))
+resultsUVap = collect_results(datadir("UV-scan", "anti_parallel"))
 resultsUhap = collect_results(datadir("Uh-scan", "anti_parallel"))
+resultsUVap2 = collect_results(datadir("UV-scan", "anti_parallel2"))
+resultsUhap2 = collect_results(datadir("Uh-scan", "anti_parallel2"))
+resultsUVap3 = collect_results(datadir("UV-scan", "anti_parallel3"))
+resultsUhap3 = collect_results(datadir("Uh-scan", "anti_parallel3"))
+resultsUVap4 = collect_results(datadir("UV-scan", "anti_parallel4"))
+resultsUhap4 = collect_results(datadir("Uh-scan", "anti_parallel4"))
+resultsUVap5 = collect_results(datadir("UV-scan", "anti_parallel5"))
+resultsUhap5 = collect_results(datadir("Uh-scan", "anti_parallel5"))
+resultsUVap6 = collect_results(datadir("UV-scan", "anti_parallel6"))
+resultsUhap6 = collect_results(datadir("Uh-scan", "anti_parallel6"))
+resultsUVap7 = collect_results(datadir("UV-scan", "anti_parallel7"))
+resultsUhap7 = collect_results(datadir("Uh-scan", "anti_parallel7"))
+resultsUVap8 = collect_results(datadir("UV-scan", "anti_parallel8"))
+resultsUhap8 = collect_results(datadir("Uh-scan", "anti_parallel8"))
+resultsUVapborg = collect_results(datadir("UV-scan", "anti_parallel","borg"))
 resultsUhapborg = collect_results(datadir("Uh-scan", "anti_parallel","borg"))
+resultsUVapborg2 = collect_results(datadir("UV-scan", "anti_parallel","borg2"))
+resultsUhapborg2 = collect_results(datadir("Uh-scan", "anti_parallel","borg2"))
 
 
 ## UV
@@ -31,7 +47,7 @@ fig, _, _ = plot_sweet_scan(resultsUhap[1, :]; datamap=x -> x.parameters.ϕ, col
 display(fig)
 
 ##
-scanfig = let data1 = resultsUhapborg[1, :], data2 = resultsUVapborg[1, :]
+scanfig = let data1 = resultsUhap7[1, :], data2 = resultsUVap7[1, :]
     fig = Figure(; resolution=400 .* (2, 1), fontsize=20, backgroundcolor=:transparent)
     xlabel1 = paramstyle[data1[:xlabel]]
     xlabel2 = paramstyle[data2[:xlabel]]
