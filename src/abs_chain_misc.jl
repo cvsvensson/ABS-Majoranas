@@ -184,11 +184,11 @@ function parallel_sweet_spot(; Δ, tratio, h, U, V, t, MaxTime, exps=collect(ran
     return sweet_spot
 end
 
-function sweet_spot_scan((xs, xlabel), (ys, ylabel), get_ss=anti_parallel_sweet_spot; fixedparams, MaxTime, target, kwargs...)
+function sweet_spot_scan((xs, xlabel), (ys, ylabel), get_ss=anti_parallel_sweet_spot; fixedparams, MaxTime, target, Method = :adaptive_de_rand_1_bin_radiuslimited, kwargs...)
     iter = collect(Base.product(xs, ys))
-    ss = Folds.map((xy) -> get_ss(; fixedparams..., Dict(xlabel => xy[1], ylabel => xy[2])..., MaxTime, target, kwargs...), iter)
+    ss = Folds.map((xy) -> get_ss(; fixedparams..., Dict(xlabel => xy[1], ylabel => xy[2])..., MaxTime, target, Method, kwargs...), iter)
     return Dict(:sweet_spots => ss, :x => xs, :y => ys, :xlabel => xlabel, :ylabel => ylabel,
-        :fixedparams => fixedparams, :MaxTime => MaxTime, :target => target)
+        :fixedparams => fixedparams, :MaxTime => MaxTime, :target => target, :Method=>Method)
 end
 function charge_stability_scan(parameters, dx=1, dy=1, res=100; transport=missing)
     μ1s = range(parameters.μ1 .- dx / 2, parameters.μ1 .+ dx / 2; length=res)
