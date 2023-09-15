@@ -77,8 +77,8 @@ function plot_sweet_scan!(ax::Axis, data; datamap=MPU, colormap=Reverse(:viridis
 end
 
 
-lowerbound(U, tratio, Δ) = Δ - U / 2
+lowerbound(U, tratio, Δ) = first(@. Δ - U / 2)
 # upperbound(U, tratio, Δ) = 1 / 2 * (-U + sqrt(
 #     U^2 + (4 * (-tratio * U + Δ * (1 +
 #                                    tratio^2))) / tratio^2))
-upperbound(U, tratio, Δ) = Δ * sqrt(1 + tratio^(-2)) - U / 2
+upperbound(U, tratio, Δ) = first(@. Δ * sqrt(1 + tratio^(-2)) - U / 2)

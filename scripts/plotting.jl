@@ -6,8 +6,8 @@ using DataFrames
 resultsUVp = collect_results(datadir("UV-scan", "parallel"))
 resultsUhp = collect_results(datadir("Uh-scan", "parallel"))
 # Methods = [:generating_set_search, :probabilistic_descent, :adaptive_de_rand_1_bin_radiuslimited]
-resultsUVap = collect_results(datadir("UV-scan", "anti_parallel","methods")) 
-resultsUhap = collect_results(datadir("Uh-scan", "anti_parallel","methods"))
+resultsUVap = collect_results(datadir("UV-scan", "anti_parallel","inhomo")) 
+resultsUhap = collect_results(datadir("Uh-scan", "anti_parallel","inhomo"))
 
 resultsUVapborg = collect_results(datadir("UV-scan", "anti_parallel","borg"))
 resultsUhapborg = collect_results(datadir("Uh-scan", "anti_parallel","borg"))
@@ -39,8 +39,8 @@ display(fig)
 
 
 ##
-for n in 1:3
-scanfig = let data1 = resultsUhap[n, :], data2 = resultsUVap[n, :]
+# for n in 1:3
+scanfig = let data1 = resultsUhap[1, :], data2 = resultsUVap[1, :]
     fig = Figure(; resolution=400 .* (2, 1), fontsize=20, backgroundcolor=:white)
     xlabel1 = paramstyle[data1[:xlabel]]
     xlabel2 = paramstyle[data2[:xlabel]]
@@ -53,8 +53,8 @@ scanfig = let data1 = resultsUhap[n, :], data2 = resultsUVap[n, :]
     hm2 = plot_sweet_scan!(ax2, data2)#; datamap = x->abs(x.gap), colorrange = (1e-5,1))
     label = L"1-\text{MP}"
     add_exp_colorbar!(fig[1, 3], hm1;)
-    paramstring1 = map(x -> round(x, digits=2), data1[:fixedparams])
-    paramstring2 = map(x -> round(x, digits=2), data2[:fixedparams])
+    paramstring1 = map(x -> round.(x, digits=2), data1[:fixedparams])
+    paramstring2 = map(x -> round.(x, digits=2), data2[:fixedparams])
 
     supertitle = Label(fig[1, 3, Top()], label, fontsize=25, padding=(0, 0, 8, 0))
     supertitle2 = Label(fig[1, 1, Top()], string(data1[:sweet_spots][1].optimization.Method), fontsize=20, padding=(0, 0, 8, 0))
@@ -64,7 +64,7 @@ scanfig = let data1 = resultsUhap[n, :], data2 = resultsUVap[n, :]
     #save(plotsdir(string("uhvplot_transparent", paramstring1, "_", paramstring2, ".png")), fig, px_per_unit=4)
     fig|>display
 end
-end
+# end
 
 ##
 ssdata = resultsUhap[2, :]
