@@ -1,7 +1,8 @@
 using CairoMakie
 using LaTeXStrings
 
-paramstyle = Dict(:U => L"U_l", :V => L"U_{nl}", :h => L"V_Z", :tratio => L"t_{so}", :μ1 => L"μ_1", :μ2 => L"μ_2")
+paramstyle = Dict(:U => L"U_l/\Delta", :V => L"U_{nl}/\Delta", :h => L"V_Z/\Delta",
+ :tratio => L"t_{so}/\Delta", :μ1 => L"\epsilon_1/\Delta", :μ2 => L"\epsilon_2/\Delta")
 
 struct IntegerTicks end
 struct Log10IntegerTicks end
@@ -69,8 +70,8 @@ function plot_sweet_scan!(ax::Axis, data; datamap=MPU, colormap=Reverse(:viridis
         Δ = data[:fixedparams].Δ
         _upperbound(U) = upperbound(U, tratio, Δ)
         _lowerbound(U) = lowerbound(U, tratio, Δ)
-        lines!(ax, x, _upperbound, color=:black, linestyle=:dash, linewidth=2)
-        lines!(ax, x, _lowerbound, color=:black, linestyle=:dash, linewidth=2)
+        lines!(ax, x, _upperbound, color=:red, linestyle=:dash, linewidth=2)
+        lines!(ax, x, _lowerbound, color=:red, linestyle=:dash, linewidth=2)
         ylims!(ax, first(y), last(y))
     end
     return hm
