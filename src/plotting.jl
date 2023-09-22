@@ -4,6 +4,18 @@ using LaTeXStrings
 paramstyle = Dict(:U => L"U_l/\Delta", :V => L"U_{nl}/\Delta", :h => L"V_Z/\Delta",
  :tratio => L"t_{so}/\Delta", :μ1 => L"\epsilon_1/\Delta", :μ2 => L"\epsilon_2/\Delta")
 
+
+ select_best_sweet_spot(spots...) = spots[findmin(MPU, spots)[2]]
+ get_property(results, label) = map(x -> x[label], results)
+ function combine_results(results)
+     testlabels = (:fixedparams, :xlabel, :ylabel, :target, :x, :y)
+     props = map(label -> unique(getindex.(eachrow(results), label)), testlabels)
+     @assert all(length.(props) .== 1)
+     uniqueprops = (; zip(testlabels, map(only, props))...)
+     sweet_spots = map(select_best_sweet_spot, results[:, :sweet_spots]...)
+     merge(uniqueprops, (; sweet_spots))
+ end
+
 struct IntegerTicks end
 struct Log10IntegerTicks end
 struct LLog10IntegerTicks end

@@ -3,13 +3,12 @@ using DrWatson
 includet(srcdir("abs_chain_misc.jl"))
 includet(srcdir("plotting.jl"))
 using DataFrames
-resultsUVp = collect_results(datadir("UV-scan", "parallel"))
-resultsUVap = collect_results(datadir("UV-scan", "anti_parallel"))
-resultsUhp = collect_results(datadir("Uh-scan", "parallel"))
-resultsUhap = collect_results(datadir("Uh-scan", "anti_parallel"))
-
+resultsUVap = collect_results(datadir("UV-scan", "anti_parallel","final"))
+resultsUhap = collect_results(datadir("Uh-scan", "anti_parallel","final"))
+resultUV = combine_results(resultsUVap)
+resultUh = combine_results(resultsUhap)
 ##
-data = resultsUVap[1, :]
+data = resultsUV
 ϕs = map(x -> x.parameters.ϕ, data[:sweet_spots])
 mu1s = map(x -> x.parameters.μ1, data[:sweet_spots])
 mu2s = map(x -> x.parameters.μ2, data[:sweet_spots])
@@ -38,12 +37,12 @@ cb = Colorbar(gc[1, 1], hm; alignmode, tellwidth, vertical=false, label=L"\phi",
 
 ax2 = Axis(gp[1, 2]; xlabel, ylabel, aspect, tellwidth, alignmode=alignmodeax)
 hm = heatmap!(ax2, x, y, mu1s; colormap)
-cb = Colorbar(gc[1, 2], hm; alignmode, tellwidth, vertical=false, label=L"\mu_1", flipaxis, height, width)
+cb = Colorbar(gc[1, 2], hm; alignmode, tellwidth, vertical=false, label=paramstyle[:μ1], flipaxis, height, width)
 
 
 ax3 = Axis(gp[1, 3]; xlabel, ylabel, aspect, tellwidth, alignmode=alignmodeax)
 hm = heatmap!(ax3, x, y, mu2s; colormap)
-cb = Colorbar(gc[1, 3], hm; alignmode, tellwidth, vertical=false, label=L"\mu_2", flipaxis, height, ticks=-2:1:2, width)
+cb = Colorbar(gc[1, 3], hm; alignmode, tellwidth, vertical=false, label=paramstyle[:μ2], flipaxis, height, ticks=-2:1:2, width)
 hideydecorations!(ax2)
 hideydecorations!(ax3)
 colgap!(gp, 25)
@@ -57,7 +56,7 @@ save(plotsdir(string("UV_parameters.png")), f, px_per_unit=4)
 ########
 
 ##
-data = resultsUhap[1, :]
+data = resultsUh
 ϕs = map(x -> x.parameters.ϕ, data[:sweet_spots])
 mu1s = map(x -> x.parameters.μ1, data[:sweet_spots])
 mu2s = map(x -> x.parameters.μ2, data[:sweet_spots])
@@ -84,12 +83,12 @@ cb = Colorbar(gc[1, 1], hm; alignmode, tellwidth, vertical=false, label=L"\phi",
 
 ax2 = Axis(gp[1, 2]; xlabel, ylabel, aspect, tellwidth, alignmode=alignmodeax)
 hm = heatmap!(ax2, x, y, mu1s; colormap)
-cb = Colorbar(gc[1, 2], hm; alignmode, tellwidth, vertical=false, label=L"\mu_1", flipaxis, height, width)
+cb = Colorbar(gc[1, 2], hm; alignmode, tellwidth, vertical=false, label=paramstyle[:μ1], flipaxis, height, width)
 
 
 ax3 = Axis(gp[1, 3]; xlabel, ylabel, aspect, tellwidth, alignmode=alignmodeax)
 hm = heatmap!(ax3, x, y, mu2s; colormap)
-cb = Colorbar(gc[1, 3], hm; alignmode, tellwidth, vertical=false, label=L"\mu_2", flipaxis, height, ticks=-12:3:10, width)
+cb = Colorbar(gc[1, 3], hm; alignmode, tellwidth, vertical=false, label=paramstyle[:μ2], flipaxis, height, ticks=-12:3:10, width)
 hideydecorations!(ax2)
 hideydecorations!(ax3)
 colgap!(gp, 25)

@@ -4,12 +4,15 @@ includet(srcdir("abs_chain_misc.jl"))
 includet(srcdir("plotting.jl"))
 
 using DataFrames
-# resultsUV = collect_results(datadir("UV-scan"))
-resultsUh = collect_results(datadir("Uh-scan", "anti_parallel"))
+resultsUVap = collect_results(datadir("UV-scan", "anti_parallel","final"))
+resultsUhap = collect_results(datadir("Uh-scan", "anti_parallel","final"))
+resultUV = combine_results(resultsUVap)
+resultUh = combine_results(resultsUhap)
+
 ##
 bigres = 200
 smallres = 200
-data = resultsUh[2, :]
+data = resultsUh
 pos = Int.(round.(size(data[:sweet_spots]) .* (20/40, 9/40)))
 ssparams = data[:sweet_spots][pos...].parameters
 paramstring = map(x -> round(x, digits=2), ssparams)
@@ -27,8 +30,9 @@ gs = g[1, 2] = GridLayout()
 
 
 datamap = x -> sign(x.gap)
-ax = Axis(gb[1, 1], xlabel=L"μ_1", ylabel=L"μ_2", aspect=1)#,  subtitle = L"\tanh{\left(δE\right)}")
-hm = plot_charge_stability!(ax, csdata_big; colorrange=1, datamap=x -> tanh(x.gap), colormap=:berlin)
+ax = Axis(gb[1, 1], xlabel=paramstyle[:μ1], ylabel=paramstyle[:μ2], aspect=1)#,  subtitle = L"\tanh{\left(δE\right)}")
+hm = plot_charge_stability!(ax, csdata_big; colorrange=(-1,1), datamap=x -> tanh(x.gap), colormap=:redsblues)
+
 cb = Colorbar(gb[2, 1], hm; vertical=false, label=L"\tanh{(δE)}", flipaxis=false, labelpadding=-20, ticks=[-1, 1], height=12,
     alignmode=Outside())
 
@@ -51,8 +55,8 @@ foreach((ax, data) -> plot_charge_stability!(ax, data; datamap), small_axes, csd
 hidedecorations!.(small_axes)
 ax.xticks = -2:2:4
 ax.yticks = -2:2:4
-ax.xticklabelspace = 0.0#tight_xticklabel_spacing!(ax)
-ax.yticklabelspace = 0.0#tight_xticklabel_spacing!(ax)
+ax.xticklabelspace = 15.0#tight_xticklabel_spacing!(ax)
+ax.yticklabelspace = 5.0#tight_xticklabel_spacing!(ax)
 # rowgap!(g, 5)
 # labels = [Label(gs[n, 1, Bottom()], L"ϕ ≈ %$(round(ϕ,digits=2))", padding=(0, 0, -5, 2)) for (n, ϕ) in enumerate(ϕs)]
 [Label(gs[n, 1, Bottom()], L"\delta ϕ %$s \delta ϕ_\star", padding=(0, 0, -5, 2)) for (n, s) in enumerate(["<","=",">"])]
@@ -68,6 +72,10 @@ colsize!(g, 2, Auto(0.4))
 cb.alignmode = Mixed(top=-10, bottom=-10)
 # rowgap!(gb, 10)
 # trim!(f.layout)
+Label(gb[1, 1, TopLeft()], L"a)", padding=(0, 25, 0, -5), tellheight=false, tellwidth=false)
+Label(gs[1, 1, TopLeft()], L"b)", padding=(0, 10, 0, -5), tellheight=false, tellwidth=false)
+
+
 f |> display
 ##
 save(plotsdir(string("horizontal_charge_stability_phase", paramstring, ".pdf")), f, pt_per_unit=1)
