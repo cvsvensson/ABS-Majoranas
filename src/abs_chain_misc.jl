@@ -50,7 +50,8 @@ function solve(H; basis=c, reduced=true, transport=missing)
     mps = half_majorana_polarizations(majcoeffs, basis)
     reduced = reduced ? reduced_similarity(basis, oddvecs[:, 1], evenvecs[:, 1]) : missing
     conductance = conductance_matrix(transport, eig; basis)
-    return (; gap=first(oddvals) - first(evenvals), gapratio=gapratio(oddvals, evenvals), reduced, mps, majcoeffs, energies=(oddvals, evenvals), conductance)
+    vacuumnorms = (;odd = map(f -> norm(f*oddvecs[:, 1]), basis.dict), even = map(f -> norm(f*evenvecs[:, 1]), basis.dict))
+    return (; gap=first(oddvals) - first(evenvals), gapratio=gapratio(oddvals, evenvals), reduced, mps, majcoeffs, energies=(oddvals, evenvals), conductance, vacuumnorms)
 end
 
 
@@ -193,11 +194,11 @@ function sweet_spot_scan((xs, xlabel), (ys, ylabel), get_ss=anti_parallel_sweet_
         :fixedparams => fixedparams, :MaxTime => MaxTime, :target => target, :Method=>Method)
 end
 function charge_stability_scan(parameters, dx=1, dy=1, res=100; transport=missing)
-    μ1s = range(parameters.μ1 .- dx / 2, parameters.μ1 .+ dx / 2; length=res)
-    μ2s = range(parameters.μ2 .- dy / 2, parameters.μ2 .+ dy / 2; length=res)
-    iter = collect(Base.product(μ1s, μ2s))
-    data = Folds.map((xy) -> solve(abs_hamiltonian(c; parameters..., :μ1 => xy[1], :μ2 => xy[2]); transport), iter)
-    return Dict(:data => data, :μs => iter, :μ1 => μ1s, :μ2 => μ2s, :parameters => parameters)
+    ϵ1s = -range(parameters.μ1 .- dx / 2, parameters.μ1 .+ dx / 2; length=res)
+    ϵ2s = -range(parameters.μ2 .- dy / 2, parameters.μ2 .+ dy / 2; length=res)
+    iter = collect(Base.product(ϵ1s, ϵ2s))
+    data = Folds.map((xy) -> solve(abs_hamiltonian(c; parameters..., :μ1 => -xy[1], :μ2 => -xy[2]); transport), iter)
+    return Dict(:data => data, :ϵs => iter, :ϵ1 => ϵ1s, :ϵ2 => ϵ2s, :parameters => parameters)
 end
 
 ## Transport

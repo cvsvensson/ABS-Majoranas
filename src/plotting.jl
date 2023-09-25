@@ -3,6 +3,7 @@ using LaTeXStrings
 
 paramstyle = Dict(:U => L"U_l/\Delta", :V => L"U_{nl}/\Delta", :h => L"V_Z/\Delta",
  :tratio => L"t_{so}/\Delta", :μ1 => L"\epsilon_1/\Delta", :μ2 => L"\epsilon_2/\Delta")
+ss_colors = cgrad(:rainbow, categorical=true)[[1, 2, 5, 4]]
 
 
  select_best_sweet_spot(spots...) = spots[findmin(MPU, spots)[2]]
@@ -49,8 +50,8 @@ function plot_charge_stability!(f, data; kwargs...)
     return ax, hm
 end
 function plot_charge_stability!(ax::Axis, data; datamap=x -> x.gap, colormap=:berlin, kwargs...)
-    x = data[:μ1]
-    y = data[:μ2]
+    x = data[:ϵ1]
+    y = data[:ϵ2]
     gaps = map(datamap, data[:data])
     hm = heatmap!(ax, x, y, gaps; colormap, kwargs...)
     return hm

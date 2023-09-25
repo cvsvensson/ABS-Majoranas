@@ -93,8 +93,9 @@ let ss = ss2
 end
 
 ##
-pss = parallel_sweet_spot(; U=2, V=0.01, Δ=1, tratio=0.2, t=0.5, h=1.5, MaxTime=5, target=LD)
-apss = anti_parallel_sweet_spot(; U=(2.0,1.0), V=0.01, Δ=(1.0,1.1), tratio=0.2, t=0.5, h=(1.5,1.2), MaxTime=5, target=LD)
+pss = parallel_sweet_spot(; U=2.5, V=0.2, Δ=1, tratio=0.2, t=0.5, h=1.25, MaxTime=5, target=MPU)
+apss = anti_parallel_sweet_spot(; U=2.5, V=0.1, Δ=1, tratio=0.2, t=0.5, h=1.25, MaxTime=10, target=MPU)
+apss.parameters
 LD(pss) #bad
 MP(pss) #bad
 LD(apss) #Small is good
