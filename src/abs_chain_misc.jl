@@ -11,8 +11,6 @@ cost_energy(energies; minexcgap=0, exp) = cost_gapratio(gapratio(energies...); e
 cost_gapratio(gr; exp) = abs(gr) > 2 * 10.0^(-exp) ? 1.0 + 10^(exp) * abs2(gr) : abs2(gr)
 cost_reduced(reduced) = reduced^2
 
-cost_function_borg(energies, reduced::Number; exp=12.0, minexcgap=0) = (cost_reduced(reduced), 10.0^(exp) * abs2(gapratio(energies...)))
-
 
 cell_labels(n, basis) = Tuple(keys(QuantumDots.cell(n, basis)))
 cell_labels(basis) = Base.Fix2(cell_labels, basis)
@@ -29,7 +27,7 @@ end
 function half_majorana_polarizations(majcoeffs, basis)
     keys1 = spatial_labels(basis)
     N = length(keys1)
-    n = div(N + 1, 2)
+    n = div(N, 2)
     keys1L = keys1[1:n]
     keys1R = keys1[end:-1:end-n+1]
     keysL = filter(k -> first(k) in keys1L, keys(basis))
@@ -61,14 +59,13 @@ function gapratio(oddvals, evenvals)
     return δE / Δ
 end
 excgap(odd, even) = min(odd[2] - odd[1], even[2] - even[1])
-Base.@kwdef struct Optimizer1{f,r,i,t,ec}
+Base.@kwdef struct Optimizer{f,r,i,t,ec}
     hamfunc::f
     ranges::Vector{r}
     initials::Vector{i}
     MaxTime::Int = 10
     minexcgap::Float64 = 0.0
     exps::Vector{Float64} = Float64.(collect(range(0.5, 3; length=4)))
-    # refinefactor::rf = 0.5
     target::t = LD
     tracemode::Symbol = :silent
     extra_cost::ec = (x...) -> 0
@@ -76,7 +73,6 @@ Base.@kwdef struct Optimizer1{f,r,i,t,ec}
     PopulationSize::Int = 100
     ϵ::Float64 = 0.01
 end
-Optimizer = Optimizer1
 
 LD(sol) = norm(sol.reduced.cells)^2
 MP(sol) = 1 - (abs(sol.mps.left.mp) + abs(sol.mps.right.mp)) / 2 #norm((1 - abs(sol.mps.left.mp)), (1 - abs(sol.mps.right.mp)))
@@ -87,12 +83,6 @@ function cost(exp, opt::Optimizer)
     function _cost(args)
         sol = solve(opt.hamfunc(args...))
         cost_function(sol.energies, opt.target(sol); exp, opt.minexcgap) + opt.extra_cost(args, exp)
-    end
-end
-function cost_borg(exp, opt::Optimizer)
-    function _cost(args)
-        sol = solve(opt.hamfunc(args...))
-        cost_function_borg(sol.energies, opt.target(sol); exp, opt.minexcgap)
     end
 end
 
@@ -121,28 +111,6 @@ function get_sweet_spot(opt::Optimizer)
     return res
 end
 
-function get_sweet_spot_borg(opt::Optimizer)
-    refinements = length(opt.exps)
-    SearchRange = opt.ranges#map(expand_searchrange, opt.ranges, opt.initials)
-    NumDimensions = length(SearchRange)
-    MaxTime = opt.MaxTime / refinements
-    println("Initial point: ", opt.initials)
-    println("SearchRange: ", SearchRange)
-    res = bboptimize(cost_borg(first(opt.exps), opt), opt.initials;
-        Method=:borg_moea, PopulationSize=opt.PopulationSize,
-        FitnessScheme=ParetoFitnessScheme{2}(is_minimizing=true), ϵ=opt.ϵ,
-        SearchRange, NumDimensions, MaxTime, TraceInterval=10.0, TraceMode=tracemode(opt))
-    for exp in Iterators.drop(opt.exps, 1)
-        ss::typeof(opt.initials) = best_candidate(res)
-        println("Sweet spot:", ss)
-        println("SearchRange:", SearchRange)
-        res = bboptimize(cost_borg(exp, opt), ss; Method=:borg_moea,
-            FitnessScheme=ParetoFitnessScheme{2}(is_minimizing=true), ϵ=opt.ϵ, PopulationSize=opt.PopulationSize,
-            SearchRange, NumDimensions, MaxTime, TraceInterval=10.0, TraceMode=tracemode(opt))
-        println(length(pareto_frontier(res)))
-    end
-    return res
-end
 ##
 function anti_parallel_sweet_spot(; Δ, tratio, h, U, V, t, MaxTime, exps=collect(range(0.5, 3, length=4)), target, kwargs...)
     fixedparams = (; Δ, tratio, h, U, V, t)
@@ -214,7 +182,6 @@ function QuantumDots.conductance_matrix(t::Transport, eig; basis=c)
 end
 spatial_labels(basis) = collect(unique(first.(keys(basis))))
 function get_leads(c, T, μ, Γ=1)
-    # N = div(QuantumDots.nbr_of_fermions(c), 2)
     l = spatial_labels(c)
     left = QuantumDots.CombinedLead((Γ * c[l[1], :↑]', Γ * c[l[1], :↓]'); T, μ=μ[1])
     right = QuantumDots.CombinedLead((Γ * c[l[end], :↑]', Γ * c[l[end], :↓]'); T, μ=μ[2])
@@ -222,71 +189,4 @@ function get_leads(c, T, μ, Γ=1)
 end
 
 ## Kitaev parameters
-function _Δk(t, tratio, s, c, sqp, sqm, pf)
-    t * tratio * pf * (-1im * s * (sqp[1] * sqm[2] - sqm[1] * sqp[2]) +
-                       c * (sqp[1] * sqm[2] + sqm[1] * sqp[2]))
-end
-function _tk(t, tratio, s, c, sqp, sqm, pf)
-    t * pf * (c * (prod(sqm) - prod(sqp)) - 1im * s * (prod(sqm) + prod(sqp)))
-end
-function _μk(h, U, μ, β, Δ, sqm, sqp, V)
-    (-h - U * (μ[1] + β[1]) / (2β[1]) + (μ[1]^2 + Δ * sqm[1] * sqp[1]) / β[1] - V * μ[1] * (β[2] + μ[2]) / prod(β),
-        -h - U * (μ[2] + β[2]) / (2β[2]) + (μ[2]^2 + Δ * sqm[2] * sqp[2]) / β[2] - V * μ[2] * (β[1] + μ[1]) / prod(β))
-end
-function KitaevParameters(; t, tratio, Δ, ϕ, μ, U, V, h)
-    β, sqp, sqm = get_β_sq(μ, Δ)
-    pf = 1 / (2 * sqrt(prod(β)))
-    s, c = sincos(ϕ / 2)
-    Δk = _Δk(t, tratio, s, c, sqp, sqm, pf)
-    tk = _tk(t, tratio, s, c, sqp, sqm, pf)
-    Vk = V * prod(μ) / prod(β)
-    μk = _μk(h, U, μ, β, Δ, sqm, sqp, V)
-    (; μ=μk, t=tk, V=Vk, Δ=Δk)
-end
-function kitaev_μ(; h, U, μ, Δ, V)
-    β, sqp, sqm = get_β_sq(μ, Δ)
-    _μk(h, U, μ, β, Δ, sqm, sqp, V)
-end
-function get_β_sq(μ, Δ)
-    β = (sqrt(μ[1]^2 + Δ^2), sqrt(μ[2]^2 + Δ^2))# map(μ -> sqrt(μ^2 + Δ^2), μ)
-    sqp = (sqrt(β[1] + μ[1]), sqrt(β[2] + μ[2]))# map((β, μ) -> sqrt(β + μ), β, μ)
-    sqm = (sqrt(β[1] - μ[1]), sqrt(β[2] - μ[2]))# map((β, μ) -> sqrt(β - μ), β, μ)
-    return β, sqp, sqm
-end
-function kitaev_tΔ(; t, tratio, μ, Δ)
-    β, sqp, sqm = get_β_sq(μ, Δ)
-    pf = 1 / (2 * sqrt(prod(β)))
-    δϕ -> begin
-        s, c = sincos(δϕ / 2)
-        Δk = _Δk(t, tratio, s, c, sqp, sqm, pf)
-        tk = _tk(t, tratio, s, c, sqp, sqm, pf)
-        (tk, Δk)
-    end
-end
-
-function kitaev_sweet_spot_guess(; t, tratio, Δ, U, V, h)
-    guess = [sqrt(abs((h + U / 2)^2 - Δ^2)) + U / 2, -sqrt(abs((h + U / 2)^2 - Δ^2)) + U / 2, pi / 2.0]
-    function cost((μ1, μ2, ϕ))
-        pK = KitaevParameters(; t, tratio, Δ, U, V, h, μ=(μ1, μ2), ϕ)
-        abs2(abs(pK.t) + pK.V / 2 - abs(pK.Δ)) + sum(abs2, pK.μ .+ pK.V / 2)
-    end
-    sol = bboptimize(cost, guess;
-        SearchRange=[map(μ -> (μ - 1, μ + 1), guess[1:2])..., (0, pi)], TargetFitness=1e-6, TraceMode=:silent)
-    bc = best_candidate(sol)
-    (; μ1=bc[1], μ2=bc[2], ϕ=bc[3])
-end
-
 kitaev_μ_zero(Δ, h, U) = @. U / 2 + (1, -1) * (sqrt(abs(-4Δ^2 + U^2 + 4h * U + 4h^2)) / 2)
-
-function sweet_spot_ϕ(; t, tratio, μ, Δ, V)
-    μ1, μ2 = μ
-    acos((t^2 * (-1 + tratio^2) * V^2 * sqrt(Δ^4) * μ1^2 * μ2^2 -
-          2 * sqrt(Δ^2 + μ1^2) * sqrt(Δ^2 + μ2^2) * sqrt(
-              t^4 * tratio^2 * V^2 * Δ^4 * μ1^2 * μ2^2 * (4 * t^2 * (1 + tratio^2) -
-                                                          (V^2 * μ1^2 * μ2^2) / ((Δ^2 + μ1^2) * (Δ^2 + μ2^2)))) -
-          2 * t^4 * (1 + tratio^2) * sqrt(Δ^4) * ((-1 + tratio^2) * Δ^4 +
-                                                  (-1 + tratio^2) * Δ^2 * (μ1^2 + μ2^2) + μ1 * μ2 *
-                                                                                          ((-1 + tratio^2) * μ1 * μ2 - (1 + tratio^2) *
-                                                                                                                       sqrt(Δ^2 + μ1^2) * sqrt(Δ^2 + μ2^2)))) /
-         (2 * t^4 * (1 + tratio^2)^2 * Δ^4 * sqrt(Δ^2 + μ1^2) * sqrt(Δ^2 + μ2^2)))
-end

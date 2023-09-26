@@ -3,42 +3,11 @@ using DrWatson
 includet(srcdir("abs_chain_misc.jl"))
 includet(srcdir("plotting.jl"))
 using DataFrames
-# resultsUVp = collect_results(datadir("UV-scan", "parallel"))
-# resultsUhp = collect_results(datadir("Uh-scan", "parallel"))
-# Methods = [:generating_set_search, :probabilistic_descent, :adaptive_de_rand_1_bin_radiuslimited]
+
 resultsUVap = collect_results(datadir("UV-scan", "anti_parallel", "final"))
 resultsUhap = collect_results(datadir("Uh-scan", "anti_parallel", "final"))
-
 resultsUh = combine_results(resultsUhap)
 resultsUV = combine_results(resultsUVap)
-
-##
-for n in 1:4
-    scanfig = let data1 = resultsUhap[n, :], data2 = resultsUVap[n, :]
-        fig = Figure(; resolution=400 .* (2, 1), fontsize=20, backgroundcolor=:white)
-        xlabel1 = paramstyle[data1[:xlabel]]
-        xlabel2 = paramstyle[data2[:xlabel]]
-        ylabel1 = paramstyle[data1[:ylabel]]
-        ylabel2 = paramstyle[data2[:ylabel]]
-        ax1 = Axis(fig[1, 1]; xlabel=xlabel1, ylabel=ylabel1)
-        ax2 = Axis(fig[1, 2]; xlabel=xlabel2, ylabel=ylabel2)
-        g = fig[1, 1:3] = GridLayout()
-        hm1 = plot_sweet_scan!(ax1, data1)#; datamap = x->abs(x.gap), colorrange = (1e-5,1))
-        hm2 = plot_sweet_scan!(ax2, data2)#; datamap = x->abs(x.gap), colorrange = (1e-5,1))
-        label = L"1-\text{MP}"
-        add_exp_colorbar!(fig[1, 3], hm1;)
-        paramstring1 = map(x -> round.(x, digits=2), data1[:fixedparams])
-        paramstring2 = map(x -> round.(x, digits=2), data2[:fixedparams])
-
-        supertitle = Label(fig[1, 3, Top()], label, fontsize=25, padding=(0, 0, 8, 0))
-        supertitle2 = Label(fig[1, 1, Top()], string(data1[:sweet_spots][1].optimization.Method), fontsize=20, padding=(0, 0, 8, 0))
-        supertitle2 = Label(fig[1, 2, Top()], string(data2[:sweet_spots][1].optimization.Method), fontsize=20, padding=(0, 0, 8, 0))
-        colgap!(fig.layout, 1, 16)
-        colgap!(fig.layout, 2, 10)
-        #save(plotsdir(string("uhvplot_transparent", paramstring1, "_", paramstring2, ".png")), fig, px_per_unit=4)
-        fig |> display
-    end
-end
 
 ##
 ssdata = resultsUh
@@ -74,12 +43,7 @@ scatter!(ax, map(ss -> ss.parameters[ssdata.xlabel], sweet_spots), map(ss -> ss.
 datamap = x -> sign(x.gap)
 spinecolor = [NamedTuple(map(x -> x => ss_colors[n], [:bottomspinecolor, :leftspinecolor, :topspinecolor, :rightspinecolor])) for n in eachindex(csdata_small)]
 small_axes = [Axis(gs[n, 1]; spinecolor[n]..., spinewidth=4, aspect=1, xlabel=paramstyle[:μ1]) for (n, data) in enumerate(csdata_small)] #subtitle = L"ϕ=%$(round(ϕ,digits=2))" 
-# foreach((ax, data) -> plot_charge_stability!(ax, data; datamap), small_axes, csdata_small)
 
-# hidedecorations!.(small_axes)
-# labels = [Label(gs[n, 1, Bottom()], L"MP ≈ %$(round(1-MPU(ss),digits=2))", padding=(0, 0, -15, 4)) for (n, ss) in enumerate(sweet_spots)]
-# Label(gb[1, 1, TopLeft()], L"a)", padding=(0, 25, 0, -5), tellheight=false, tellwidth=false)
-# Label(gs[1, 1, TopLeft()], L"b)", padding=(0, 10, 0, -5), tellheight=false, tellwidth=false)
 foreach((n, ax, data) ->
         begin
             plot_charge_stability!(ax, data; datamap)
@@ -93,7 +57,6 @@ elems = [PolyElement(color=cgrad(:berlin)[1], strokewidth=1),
 Legend(gs[end+1, 1], elems, [L"\text{Odd}", L"\text{Even}"], L"\text{Parity}", framevisible=false)
 
 hidedecorations!.(small_axes)
-# labels = [Label(gs[n, 1, Top()], L"MP ≈ %$(round(1-MPU(ss),digits=2))", padding=(0, 0, -15, 4)) for (n, ss) in enumerate(sweet_spots)]
 labels = [Label(gs[n, 1, Top()], L"MP ≈ %$(round(1-MPU(ss),digits=2))", padding=(0, 0, 10, 0), tellheight=false, tellwidth=false) for (n, ss) in enumerate(sweet_spots)]
 Label(gb[1, 1, TopLeft()], L"a)", padding=(0, 50, 0, -5), tellheight=false, tellwidth=false)
 Label(gs[1, 1, TopLeft()], L"b)", padding=(0, 35, 0, -5), tellheight=false, tellwidth=false)
@@ -122,7 +85,6 @@ paramstring = map(ss -> map(x -> round(x, digits=2), ss.parameters), sweet_spots
 csdata_small = [charge_stability_scan((; ss.parameters..., ϕ=ss.parameters.ϕ, μ1=ss.parameters.μ1, μ2=ss.parameters.μ2), 1.5, 1.5, smallres; transport) for ss in sweet_spots]
 
 ##
-# colors = cgrad(:rainbow, categorical=true)[[1, 2, 5, 4][1:length(csdata_small)]]
 fixedparamstring = map(x -> round(x, digits=2), ssdata[:fixedparams])
 f = Figure(resolution=400 .* (1.4, 1), fontsize=20, backgroundcolor=:transparent);
 f = Figure(resolution=400 .* (1.4, 1), fontsize=20, backgroundcolor=:white);
@@ -156,7 +118,6 @@ elems = [PolyElement(color=cgrad(:berlin)[1], strokewidth=1),
 Legend(gs[end+1, 1], elems, [L"\text{Odd}", L"\text{Even}"], L"\text{Parity}", framevisible=false)
 
 hidedecorations!.(small_axes)
-# labels = [Label(gs[n, 1, Top()], L"MP ≈ %$(round(1-MPU(ss),digits=2))", padding=(0, 0, -15, 4)) for (n, ss) in enumerate(sweet_spots)]
 labels = [Label(gs[n, 1, Top()], L"MP ≈ %$(round(1-MPU(ss),digits=2))", padding=(0, 0, 10, 0), tellheight=false, tellwidth=false) for (n, ss) in enumerate(sweet_spots)]
 Label(gb[1, 1, TopLeft()], L"a)", padding=(0, 50, 0, -5), tellheight=false, tellwidth=false)
 Label(gs[1, 1, TopLeft()], L"b)", padding=(0, 35, 0, -5), tellheight=false, tellwidth=false)
