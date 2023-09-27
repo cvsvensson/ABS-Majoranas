@@ -71,7 +71,7 @@ Base.@kwdef struct Optimizer{f,r,i,t,ec}
     extra_cost::ec = (x...) -> 0
     Method::Symbol = :probabilistic_descent
     PopulationSize::Int = 100
-    ϵ::Float64 = 0.01
+    TargetFitness::Float64 = 0.0
 end
 
 LD(sol) = norm(sol.reduced.cells)^2
@@ -91,13 +91,15 @@ function get_sweet_spot(opt::Optimizer)
     SearchRange = opt.ranges #map(expand_searchrange, opt.ranges, opt.initials)
     NumDimensions = length(SearchRange)
     MaxTime = opt.MaxTime / refinements
+    TargetFitness = opt.TargetFitness
     println("Initial point: ", opt.initials)
     println("SearchRange: ", SearchRange)
     Method = opt.Method
     res = bboptimize(cost(first(opt.exps), opt), opt.initials;
         SearchRange, NumDimensions, MaxTime, TraceInterval=10.0,
         TraceMode=tracemode(opt),
-        Method, PopulationSize=opt.PopulationSize)
+        Method, PopulationSize=opt.PopulationSize,
+        TargetFitness)
     for exp in Iterators.drop(opt.exps, 1)
         ss::typeof(opt.initials) = best_candidate(res)
         #SearchRange = [refine_interval(sr, ss, opt.refinefactor) for (sr, ss) in zip(SearchRange, ss)]
@@ -105,7 +107,7 @@ function get_sweet_spot(opt::Optimizer)
         println("SearchRange:", SearchRange)
         res = bboptimize(cost(exp, opt), ss; SearchRange, NumDimensions,
             MaxTime, TraceInterval=10.0, TraceMode=tracemode(opt),
-            Method,
+            Method, TargetFitness,
             PopulationSize=opt.PopulationSize)
     end
     return res

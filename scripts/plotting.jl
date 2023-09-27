@@ -137,3 +137,8 @@ f |> display
 ##
 save(plotsdir(string("uvplot_transparent", fixedparamstring, ".png")), f, px_per_unit=4)
 
+##
+fgap = Figure();
+ax, hm = heatmap(fgap[1,1],resultsUh[:x],resultsUh[:y], map(x->log10(abs(x.gap)), resultsUh[:sweet_spots]), colorrange = (-10,-3), highclip=:red)
+Colorbar(fgap[1,2], hm)
+fgap

@@ -5,8 +5,8 @@ includet(srcdir("plotting.jl"))
 using DataFrames
 resultsUVap = collect_results(datadir("UV-scan", "anti_parallel", "final"))
 resultsUhap = collect_results(datadir("Uh-scan", "anti_parallel", "final"))
-resultUV = combine_results(resultsUVap)
-resultUh = combine_results(resultsUhap)
+resultsUV = combine_results(resultsUVap)
+resultsUh = combine_results(resultsUhap)
 ##
 data1 = resultsUh
 ϕs1 = map(x -> x.parameters.ϕ, data1[:sweet_spots])
@@ -57,7 +57,7 @@ hidexdecorations!.((ax1_1, ax2_1, ax3_1))
 
 ax1_2 = Axis(gp[2, 1]; ylabel=ylabel2, aspect, tellwidth, yticks=0:1:1)#, alignmode=alignmodeax)
 hm = heatmap!(ax1_2, x2, y2, ϕs2; colorrange=cr1, colormap, tellwidth)
-ax2_2 = Axis(gp[2, 2]; xlabel, aspect, tellwidth)#, alignmode=alignmodeax)
+ax2_2 = Axis(gp[2, 2]; xlabel = xlabel2, aspect, tellwidth)#, alignmode=alignmodeax)
 hm = heatmap!(ax2_2, x2, y2, -mu1s2; colorrange=cr2, colormap)
 ax3_2 = Axis(gp[2, 3]; aspect, tellwidth)#, alignmode=alignmodeax)
 hm = heatmap!(ax3_2, x2, y2, -mu2s2; colorrange=cr3, colormap)
