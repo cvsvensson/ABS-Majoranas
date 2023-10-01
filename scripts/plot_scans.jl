@@ -6,13 +6,15 @@ using DataFrames
 
 resultsUVap = collect_results(datadir("UV-scan", "anti_parallel", "final"))
 resultsUhap = collect_results(datadir("Uh-scan", "anti_parallel", "final"))
+resultsUh1 = collect_results(datadir("Uh-scan", "anti_parallel", "apvsp"))
+resultsUV1 = collect_results(datadir("UV-scan", "anti_parallel", "apvsp"))
 resultsUh = combine_results(resultsUhap)
 resultsUV = combine_results(resultsUVap)
 
 ##
 ssdata = resultsUh
 nx, ny = size(ssdata[:sweet_spots])
-smallres = 300
+smallres = 100
 positions = map(x -> Int.(floor.((nx, ny) .* x)), [(0.4, 0.7), (0.25, 0.5), (0.25, 0.38), (0.25, 0.33)])
 positions = map(x -> Int.(floor.((nx, ny) .* x)), [(0.5, 0.8), (0.3, 0.4), (0.1, 0.1)])
 positions = map(x -> Int.(floor.((nx, ny) .* x)), [(0.65, 0.8), (0.3, 0.4)])
@@ -24,8 +26,8 @@ csdata_small = [charge_stability_scan((; ss.parameters...), 1.5, 1.5, smallres; 
 
 ##
 fixedparamstring = map(x -> round(x, digits=2), ssdata[:fixedparams])
-f = Figure(resolution=400 .* (1.4, 1), fontsize=20, backgroundcolor=:white);
 f = Figure(resolution=400 .* (1.4, 1), fontsize=20, backgroundcolor=:transparent);
+f = Figure(resolution=400 .* (1.4, 1), fontsize=20, backgroundcolor=:white);
 g = f[1, 1] = GridLayout()
 gb = g[1, 1] = GridLayout()
 gs = g[1, 2] = GridLayout()
@@ -33,7 +35,7 @@ gs = g[1, 2] = GridLayout()
 xlabel = paramstyle[ssdata[:xlabel]]
 ylabel = paramstyle[ssdata[:ylabel]]
 ax = Axis(gb[1, 1]; xlabel, ylabel)
-hm = plot_sweet_scan!(ax, ssdata)
+hm = plot_sweet_scan!(ax, ssdata; datamap = MP)
 
 cb = add_exp_colorbar!(gb[2, 1], hm; vertical=false, label=L"1-\mathrm{MP}", flipaxis=false, labelpadding=-5, height=12)
 
@@ -57,18 +59,18 @@ elems = [PolyElement(color=cgrad(:berlin)[1], strokewidth=1),
 Legend(gs[end+1, 1], elems, [L"\text{Odd}", L"\text{Even}"], L"\text{Parity}", framevisible=false)
 
 hidedecorations!.(small_axes)
-labels = [Label(gs[n, 1, Top()], L"MP ≈ %$(round(1-MPU(ss),digits=2))", padding=(0, 0, 10, 0), tellheight=false, tellwidth=false) for (n, ss) in enumerate(sweet_spots)]
+labels = [Label(gs[n, 1, Top()], L"\mathrm{MP} ≈ %$(round(1-MP(ss),digits=2))", padding=(0, 0, 10, 0), tellheight=false, tellwidth=false) for (n, ss) in enumerate(sweet_spots)]
 Label(gb[1, 1, TopLeft()], L"a)", padding=(0, 50, 0, -5), tellheight=false, tellwidth=false)
 Label(gs[1, 1, TopLeft()], L"b)", padding=(0, 35, 0, -5), tellheight=false, tellwidth=false)
-Label(gs[2, 1, Left()], L"\epsilon_1", rotation=pi / 2, padding=(0, 30, 0, 0), tellheight=false, tellwidth=false)
-Label(gs[2, 1, Bottom()], L"\epsilon_2", padding=(0, 0, 0, 10), tellheight=false, tellwidth=false)
+Label(gs[2, 1, Left()], L"\varepsilon_1", rotation=pi / 2, padding=(0, 30, 0, 0), tellheight=false, tellwidth=false)
+Label(gs[2, 1, Bottom()], L"\varepsilon_2", padding=(0, 0, 0, 10), tellheight=false, tellwidth=false)
 
 colsize!(g, 2, Relative(0.28))
 cb.alignmode = Mixed(top=-15, bottom=0)
 f |> display
 
 ##
-save(plotsdir(string("uhplot_transparent", fixedparamstring, ".png")), f, px_per_unit=4)
+save(plotsdir(string("uhplot", fixedparamstring, ".png")), f, px_per_unit=4)
 ######
 ##
 ssdata = resultsUV
@@ -86,8 +88,8 @@ csdata_small = [charge_stability_scan((; ss.parameters..., ϕ=ss.parameters.ϕ, 
 
 ##
 fixedparamstring = map(x -> round(x, digits=2), ssdata[:fixedparams])
-f = Figure(resolution=400 .* (1.4, 1), fontsize=20, backgroundcolor=:transparent);
 f = Figure(resolution=400 .* (1.4, 1), fontsize=20, backgroundcolor=:white);
+f = Figure(resolution=400 .* (1.4, 1), fontsize=20, backgroundcolor=:transparent);
 g = f[1, 1] = GridLayout()
 gb = g[1, 1] = GridLayout()
 gs = g[1, 2] = GridLayout()
@@ -95,7 +97,7 @@ gs = g[1, 2] = GridLayout()
 xlabel = paramstyle[ssdata[:xlabel]]
 ylabel = paramstyle[ssdata[:ylabel]]
 ax = Axis(gb[1, 1]; xlabel, ylabel)
-hm = plot_sweet_scan!(ax, ssdata)
+hm = plot_sweet_scan!(ax, ssdata; datamap = MP)
 
 cb = add_exp_colorbar!(gb[2, 1], hm; vertical=false, label=L"1-\mathrm{MP}", flipaxis=false, labelpadding=-5, height=12)
 
@@ -118,14 +120,14 @@ elems = [PolyElement(color=cgrad(:berlin)[1], strokewidth=1),
 Legend(gs[end+1, 1], elems, [L"\text{Odd}", L"\text{Even}"], L"\text{Parity}", framevisible=false)
 
 hidedecorations!.(small_axes)
-labels = [Label(gs[n, 1, Top()], L"MP ≈ %$(round(1-MPU(ss),digits=2))", padding=(0, 0, 10, 0), tellheight=false, tellwidth=false) for (n, ss) in enumerate(sweet_spots)]
+labels = [Label(gs[n, 1, Top()], L"\mathrm{MP} ≈ %$(round(1-MP(ss),digits=2))", padding=(0, 0, 10, 0), tellheight=false, tellwidth=false) for (n, ss) in enumerate(sweet_spots)]
 Label(gb[1, 1, TopLeft()], L"a)", padding=(0, 50, 0, -5), tellheight=false, tellwidth=false)
 Label(gs[1, 1, TopLeft()], L"b)", padding=(0, 35, 0, -5), tellheight=false, tellwidth=false)
-Label(gs[2, 1, Left()], L"\epsilon_1", rotation=pi / 2, padding=(0, 30, 0, 0), tellheight=false, tellwidth=false)
-Label(gs[2, 1, Bottom()], L"\epsilon_2", padding=(0, 0, 0, 10), tellheight=false, tellwidth=false)
+Label(gs[2, 1, Left()], L"\varepsilon_1", rotation=pi / 2, padding=(0, 30, 0, 0), tellheight=false, tellwidth=false)
+Label(gs[2, 1, Bottom()], L"\varepsilon_2", padding=(0, 0, 0, 10), tellheight=false, tellwidth=false)
 
 let Us = 0:1
-    band!(gb[1, 1], Us, Us, maximum(Us) , color=(:white, 0.5))
+    band!(gb[1, 1], Us, Us, maximum(Us), color=(:white, 0.5))
 end
 
 ax.yticks = 0:1
@@ -135,10 +137,18 @@ cb.alignmode = Mixed(top=-15, bottom=0)
 
 f |> display
 ##
-save(plotsdir(string("uvplot_transparent", fixedparamstring, ".png")), f, px_per_unit=4)
+save(plotsdir(string("uvplot", fixedparamstring, ".png")), f, px_per_unit=4)
 
 ##
-fgap = Figure();
-ax, hm = heatmap(fgap[1,1],resultsUh[:x],resultsUh[:y], map(x->log10(abs(x.gap)), resultsUh[:sweet_spots]), colorrange = (-10,-3), highclip=:red)
-Colorbar(fgap[1,2], hm)
+data = resultsUV1[2,:]
+fgap = Figure(; resolution=400 .* (1.4, 1), fontsize=20, backgroundcolor=:white);
+grid = fgap[1, 1] = GridLayout()
+ax, hm = heatmap(grid[1, 1], data[:x], data[:y], map(x -> log10(abs(x.gap)), data[:sweet_spots]),
+    colorrange=(-10, -3), highclip=:red, colormap=Reverse(:viridis))
+Colorbar(grid[2, 1], hm, label="log10(|δE|/Δ)", vertical=false)
+ax2, hm2 = heatmap(grid[1, 2], data[:x], data[:y], map(x -> excgap(x.energies...), data[:sweet_spots]),
+    colorrange=(0, 1), highclip=:red, colormap=Reverse(:viridis))
+Colorbar(grid[2, 2], hm2, label="excgap", vertical=false)
 fgap
+
+##

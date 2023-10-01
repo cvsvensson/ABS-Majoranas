@@ -41,7 +41,7 @@ cbarwidth = 165
 cbarheight = 10
 ax1_1 = Axis(gp[1, 1]; ylabel=ylabel1, aspect, yticks=0:2:10)#, alignmode=alignmodeax)
 hm = heatmap!(ax1_1, x1, y1, ϕs1; colorrange=cr1, tellwidth, colormap)
-cb = Colorbar(gc[1, 1,], hm; height=cbarheight, width=cbarwidth, tellwidth, vertical=false, label=L"\phi", flipaxis)
+cb = Colorbar(gc[1, 1,], hm; height=cbarheight, width=cbarwidth, tellwidth, vertical=false, label=L"\delta\phi", flipaxis)
 cb.ticklabelspace = labelspace
 ax2_1 = Axis(gp[1, 2]; aspect)
 hm = heatmap!(ax2_1, x1, y1, -mu1s1; colorrange=cr2, colormap)

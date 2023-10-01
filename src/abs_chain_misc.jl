@@ -48,7 +48,7 @@ function solve(H; basis=c, reduced=true, transport=missing)
     mps = half_majorana_polarizations(majcoeffs, basis)
     reduced = reduced ? reduced_similarity(basis, oddvecs[:, 1], evenvecs[:, 1]) : missing
     conductance = conductance_matrix(transport, eig; basis)
-    vacuumnorms = (;odd = map(f -> norm(f*oddvecs[:, 1]), basis.dict), even = map(f -> norm(f*evenvecs[:, 1]), basis.dict))
+    vacuumnorms = (; odd=map(f -> norm(f * oddvecs[:, 1]), basis.dict), even=map(f -> norm(f * evenvecs[:, 1]), basis.dict))
     return (; gap=first(oddvals) - first(evenvals), gapratio=gapratio(oddvals, evenvals), reduced, mps, majcoeffs, energies=(oddvals, evenvals), conductance, vacuumnorms)
 end
 
@@ -136,20 +136,20 @@ function anti_parallel_sweet_spot(; Δ, tratio, h, U, V, t, MaxTime, exps=collec
     sweet_spot = merge(optsol, (; parameters, optimization))
     return sweet_spot
 end
-function parallel_sweet_spot(; Δ, tratio, h, U, V, t, MaxTime, exps=collect(range(0.5, 3, length=4)), target, lower=true)
+function parallel_sweet_spot(; Δ, tratio, h, U, V, t, MaxTime, exps=collect(range(0.5, 3, length=4)), target, lower=true, kwargs...)
     fixedparams = (; Δ, tratio, h, U, V, t)
-    pk = kitaev_sweet_spot_guess(; Δ, h, U, V, t, tratio)
-    μinitial = lower ? pk.μ2 : pk.μ1
-    μrange = lower ? (-2abs(h) - U, U + V) : (0.0, 1.1 * abs(pk.μ1) + abs(h) + U)
+    μ1, μ2 = kitaev_μ_zero(Δ, h, U)
+    μi = lower ? μ2 : μ1
+    μrange = lower ? (-2abs(h) - U-1, U + V) : (0.0, 1.1 * abs(μi) + abs(h) + U)
     hamfunc(ϕ, μ) = abs_hamiltonian(c; μ1=μ, μ2=μ, ϕ, fixedparams...)
     opt = Optimizer(;
         hamfunc,
         ranges=[(0.0, 1.0π), μrange],
-        initials=Float64.([pk.ϕ, μinitial]),
+        initials=Float64.([pi/2, μi]),
         MaxTime, exps, target,
-        refinefactor=(1, :hard_limit),
-        tracemode=:silent)
-    ss = get_sweet_spot(opt)
+        tracemode=:silent,
+        kwargs...)
+    ss = best_candidate(get_sweet_spot(opt))
     optsol = solve(opt.hamfunc(ss...))
     parameters = merge(fixedparams, NamedTuple(zip((:ϕ, :μ1, :μ2), ss[[1, 2, 2]])))
     optimization = opt
@@ -157,11 +157,11 @@ function parallel_sweet_spot(; Δ, tratio, h, U, V, t, MaxTime, exps=collect(ran
     return sweet_spot
 end
 
-function sweet_spot_scan((xs, xlabel), (ys, ylabel), get_ss=anti_parallel_sweet_spot; fixedparams, MaxTime, target, Method = :adaptive_de_rand_1_bin_radiuslimited, kwargs...)
+function sweet_spot_scan((xs, xlabel), (ys, ylabel), get_ss=anti_parallel_sweet_spot; fixedparams, MaxTime, target, Method=:adaptive_de_rand_1_bin_radiuslimited, kwargs...)
     iter = collect(Base.product(xs, ys))
     ss = Folds.map((xy) -> get_ss(; fixedparams..., Dict(xlabel => xy[1], ylabel => xy[2])..., MaxTime, target, Method, kwargs...), iter)
     return Dict(:sweet_spots => ss, :x => xs, :y => ys, :xlabel => xlabel, :ylabel => ylabel,
-        :fixedparams => fixedparams, :MaxTime => MaxTime, :target => target, :Method=>Method)
+        :fixedparams => fixedparams, :MaxTime => MaxTime, :target => target, :Method => Method)
 end
 function charge_stability_scan(parameters, dx=1, dy=1, res=100; transport=missing)
     ϵ1s = -range(parameters.μ1 .- dx / 2, parameters.μ1 .+ dx / 2; length=res)

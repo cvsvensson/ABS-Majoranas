@@ -55,7 +55,7 @@ heatmap!(fig2ax1, μCs, μs, map(ss -> (ss.gap), fig2data); colormap=:redsblues,
 heatmap!(fig2ax2, μCs, μs, map(ss -> ss.mps.left.mpu, fig2data); colormap=:viridis, colorrange=(0, 1))
 fig2
 ## Add in optimized sweet spot
-function tsl_cost(x; P=10^3)
+function tsl_cost(x; P=10^2)
     μ, μC = x
     sol = solve(hamGC(μ, μC); basis=d)
     P * abs2(sol.gap) + MPU(sol)

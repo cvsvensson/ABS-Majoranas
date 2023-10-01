@@ -7,7 +7,7 @@ resultsUVmethods = collect_results(datadir("UV-scan", "anti_parallel", "methods"
 resultsUhmethods = collect_results(datadir("Uh-scan", "anti_parallel", "methods"))
 
 ##
-for n in 1:4
+for n in 1:6
     scanfig = let data1 = resultsUhmethods[n, :], data2 = resultsUVmethods[n, :]
         fig = Figure(; resolution=400 .* (2, 1), fontsize=20, backgroundcolor=:white)
         xlabel1 = paramstyle[data1[:xlabel]]

@@ -2,7 +2,7 @@ using CairoMakie
 using LaTeXStrings
 
 paramstyle = Dict(:U => L"U_l/\Delta", :V => L"U_{nl}/\Delta", :h => L"V_Z/\Delta",
- :tratio => L"t_{so}/\Delta", :μ1 => L"\epsilon_1/\Delta", :μ2 => L"\epsilon_2/\Delta")
+ :tratio => L"t_{so}/\Delta", :μ1 => L"\varepsilon_1/\Delta", :μ2 => L"\varepsilon_2/\Delta")
 ss_colors = cgrad(:rainbow, categorical=true)[[1, 2, 5, 4]]
 
 
