@@ -55,13 +55,38 @@ heatmap!(fig2ax1, μCs, μs, map(ss -> (ss.gap), fig2data); colormap=:redsblues,
 heatmap!(fig2ax2, μCs, μs, map(ss -> ss.mps.left.mpu, fig2data); colormap=:viridis, colorrange=(0, 1))
 fig2
 ## Add in optimized sweet spot
-function tsl_cost(x; P=10^2)
-    μ, μC = x
-    sol = solve(hamGC(μ, μC); basis=d)
-    P * abs2(sol.gap) + MPU(sol)
+includet(srcdir("abs_chain_misc.jl"))
+params_abs, params_tsl = let Δ = 1.0, tratio = 0.2, t, h
+    h = 1.25Δ
+    t = 0.5Δ
+    t2 = t*1.2
+    U = 1Δ
+    (; Δ, U, t, tratio=0.2, h, V=0),
+    (; Δ, U, t = t2, tsoc=t2 * tratio, h)
 end
-opt = bboptimize(tsl_cost; NumDimensions=2, Method=:probabilistic_descent, MaxTime=5)
-ss = best_candidate(opt)
+tsl_ham(μG, μC) = blockdiagonal(QuantumDots.TSL_hamiltonian(d; params_tsl..., μC, μL=μG, μR=μG), d)
+abs_ham(μ1, μ2, δϕ) = abs_hamiltonian(c; μ1, μ2, ϕ=δϕ, params_abs...)
+function cost(x; ham, basis, P)
+    sol = solve(ham(x...); basis)
+    P * abs2(sol.gap) + MP(sol)
+end
+tsl_cost(x; P) = cost(x; ham=tsl_ham, basis=d, P)
+abs_cost(x; P) = cost(x; ham=abs_ham, basis=c, P)
+
+##
+optparams = (;  MaxTime=5, TargetFitness=1e-6)
+tsl_opt = bboptimize(x -> tsl_cost(x; P=1e3); SearchRange = [(-5,5),(-5,5)], NumDimensions=2, optparams...)
+abs_opt = bboptimize(x -> abs_cost(x; P=1e3), [4,-4, pi/2];  SearchRange = [(0,20),(-20,0),(0,pi)], NumDimensions=3, optparams...)
+tsl_ss = best_candidate(tsl_opt)
+abs_ss = best_candidate(abs_opt)
+tsl_ss = solve(tsl_ham(tsl_ss...); basis=d)
+abs_ss = solve(abs_ham(abs_ss...); basis=c)
+excgap(tsl_ss.energies...)
+excgap(abs_ss.energies...)
+Dict(pairs(tsl_ss))
+Dict(pairs(abs_ss))
+
+
 ##
 scatter!(fig2ax1, [ss[2]], [ss[1]])
 scatter!(fig2ax2, [ss[2]], [ss[1]])
