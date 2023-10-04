@@ -1,3 +1,4 @@
+#This script makes plots of the sweet spot scans.
 using DrWatson
 @quickactivate "Majorana sweet spot"
 includet(srcdir("abs_chain_misc.jl"))
@@ -6,28 +7,25 @@ using DataFrames
 
 resultsUVap = collect_results(datadir("UV-scan", "anti_parallel", "final"))
 resultsUhap = collect_results(datadir("Uh-scan", "anti_parallel", "final"))
-resultsUh1 = collect_results(datadir("Uh-scan", "anti_parallel", "apvsp"))
-resultsUV1 = collect_results(datadir("UV-scan", "anti_parallel", "apvsp"))
 resultsUh = combine_results(resultsUhap)
 resultsUV = combine_results(resultsUVap)
 
 ##
 ssdata = resultsUh
 nx, ny = size(ssdata[:sweet_spots])
-smallres = 100
+smallres = 300
 positions = map(x -> Int.(floor.((nx, ny) .* x)), [(0.4, 0.7), (0.25, 0.5), (0.25, 0.38), (0.25, 0.33)])
 positions = map(x -> Int.(floor.((nx, ny) .* x)), [(0.5, 0.8), (0.3, 0.4), (0.1, 0.1)])
 positions = map(x -> Int.(floor.((nx, ny) .* x)), [(0.65, 0.8), (0.3, 0.4)])
 sweet_spots = [ssdata[:sweet_spots][pos...] for pos in positions]
 paramstring = map(ss -> map(x -> round(x, digits=2), ss.parameters), sweet_spots)
-# transport = Transport(QuantumDots.Pauli(), (; T=1 / 20, μ=(0.0, 0.0)))
 transport = missing
 csdata_small = [charge_stability_scan((; ss.parameters...), 1.5, 1.5, smallres; transport) for ss in sweet_spots]
 
 ##
 fixedparamstring = map(x -> round(x, digits=2), ssdata[:fixedparams])
-f = Figure(resolution=400 .* (1.4, 1), fontsize=20, backgroundcolor=:transparent);
 f = Figure(resolution=400 .* (1.4, 1), fontsize=20, backgroundcolor=:white);
+f = Figure(resolution=400 .* (1.4, 1), fontsize=20, backgroundcolor=:transparent);
 g = f[1, 1] = GridLayout()
 gb = g[1, 1] = GridLayout()
 gs = g[1, 2] = GridLayout()
@@ -35,7 +33,8 @@ gs = g[1, 2] = GridLayout()
 xlabel = paramstyle[ssdata[:xlabel]]
 ylabel = paramstyle[ssdata[:ylabel]]
 ax = Axis(gb[1, 1]; xlabel, ylabel)
-hm = plot_sweet_scan!(ax, ssdata; datamap = MP)
+hm = plot_sweet_scan!(ax, ssdata; datamap=MPU, colorrange=(10.0^(-2.3), 1))
+minimum(MP, ssdata[:sweet_spots]) |> log10
 
 cb = add_exp_colorbar!(gb[2, 1], hm; vertical=false, label=L"1-\mathrm{MP}", flipaxis=false, labelpadding=-5, height=12)
 
@@ -44,7 +43,7 @@ scatter!(ax, map(ss -> ss.parameters[ssdata.xlabel], sweet_spots), map(ss -> ss.
 
 datamap = x -> sign(x.gap)
 spinecolor = [NamedTuple(map(x -> x => ss_colors[n], [:bottomspinecolor, :leftspinecolor, :topspinecolor, :rightspinecolor])) for n in eachindex(csdata_small)]
-small_axes = [Axis(gs[n, 1]; spinecolor[n]..., spinewidth=4, aspect=1, xlabel=paramstyle[:μ1]) for (n, data) in enumerate(csdata_small)] #subtitle = L"ϕ=%$(round(ϕ,digits=2))" 
+small_axes = [Axis(gs[n, 1]; spinecolor[n]..., spinewidth=4, aspect=1, xlabel=paramstyle[:μ1]) for (n, data) in enumerate(csdata_small)]
 
 foreach((n, ax, data) ->
         begin
@@ -80,7 +79,6 @@ positions = map(x -> Int.(floor.((nx, ny) .* x)), [(0.55, 0.75), (0.25, 0.5), (0
 positions = map(x -> Int.(floor.((nx, ny) .* x)), [(0.1, 0.6), (0.4, 0.2), (0.6, 0.6)])
 positions = map(x -> Int.(floor.((nx, ny) .* x)), [(0.5, 0.4), (0.4, 0.2)])
 sweet_spots = [ssdata[:sweet_spots][pos...] for pos in positions]
-# transport = Transport(QuantumDots.Pauli(), (; T=1 / 20, μ=(0.0, 0.0)))
 transport = missing
 paramstring = map(ss -> map(x -> round(x, digits=2), ss.parameters), sweet_spots)
 
@@ -97,7 +95,7 @@ gs = g[1, 2] = GridLayout()
 xlabel = paramstyle[ssdata[:xlabel]]
 ylabel = paramstyle[ssdata[:ylabel]]
 ax = Axis(gb[1, 1]; xlabel, ylabel)
-hm = plot_sweet_scan!(ax, ssdata; datamap = MP)
+hm = plot_sweet_scan!(ax, ssdata; datamap=MP, colorrange=(10.0^(-1.5), 1))
 
 cb = add_exp_colorbar!(gb[2, 1], hm; vertical=false, label=L"1-\mathrm{MP}", flipaxis=false, labelpadding=-5, height=12)
 
@@ -106,7 +104,7 @@ scatter!(ax, map(ss -> ss.parameters[ssdata.xlabel], sweet_spots), map(ss -> ss.
 
 datamap = x -> sign(x.gap)
 spinecolor = [NamedTuple(map(x -> x => ss_colors[n], [:bottomspinecolor, :leftspinecolor, :topspinecolor, :rightspinecolor])) for n in eachindex(csdata_small)]
-small_axes = [Axis(gs[n, 1]; spinecolor[n]..., spinewidth=4, aspect=1, xlabel=paramstyle[:μ1]) for (n, data) in enumerate(csdata_small)] #subtitle = L"ϕ=%$(round(ϕ,digits=2))" 
+small_axes = [Axis(gs[n, 1]; spinecolor[n]..., spinewidth=4, aspect=1, xlabel=paramstyle[:μ1]) for (n, data) in enumerate(csdata_small)]
 foreach((n, ax, data) ->
         begin
             plot_charge_stability!(ax, data; datamap)
@@ -140,7 +138,7 @@ f |> display
 save(plotsdir(string("uvplot", fixedparamstring, ".png")), f, px_per_unit=4)
 
 ##
-data = resultsUV1[2,:]
+data = resultsUV1[2, :]
 fgap = Figure(; resolution=400 .* (1.4, 1), fontsize=20, backgroundcolor=:white);
 grid = fgap[1, 1] = GridLayout()
 ax, hm = heatmap(grid[1, 1], data[:x], data[:y], map(x -> log10(abs(x.gap)), data[:sweet_spots]),

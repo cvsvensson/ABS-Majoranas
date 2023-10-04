@@ -48,8 +48,7 @@ function solve(H; basis=c, reduced=true, transport=missing)
     mps = half_majorana_polarizations(majcoeffs, basis)
     reduced = reduced ? reduced_similarity(basis, oddvecs[:, 1], evenvecs[:, 1]) : missing
     conductance = conductance_matrix(transport, eig; basis)
-    vacuumnorms = (; odd=map(f -> norm(f * oddvecs[:, 1]), basis.dict), even=map(f -> norm(f * evenvecs[:, 1]), basis.dict))
-    return (; gap=first(oddvals) - first(evenvals), gapratio=gapratio(oddvals, evenvals), reduced, mps, majcoeffs, energies=(oddvals, evenvals), conductance, vacuumnorms)
+    return (; gap=first(oddvals) - first(evenvals), gapratio=gapratio(oddvals, evenvals), reduced, mps, majcoeffs, energies=(oddvals, evenvals), conductance)
 end
 
 
@@ -75,8 +74,8 @@ Base.@kwdef struct Optimizer{f,r,i,t,ec}
 end
 
 LD(sol) = norm(sol.reduced.cells)^2
-MP(sol) = 1 - (abs(sol.mps.left.mp) + abs(sol.mps.right.mp)) / 2 #norm((1 - abs(sol.mps.left.mp)), (1 - abs(sol.mps.right.mp)))
-MPU(sol) = 1 - (abs(sol.mps.left.mpu) + abs(sol.mps.right.mpu)) / 2 #norm((1 - abs(sol.mps.left.mpu)), (1 - abs(sol.mps.right.mpu)))
+MP(sol) = 1 - (abs(sol.mps.left.mp) + abs(sol.mps.right.mp)) / 2 
+MPU(sol) = 1 - (abs(sol.mps.left.mpu) + abs(sol.mps.right.mpu)) / 2
 
 tracemode(opt::Optimizer) = opt.tracemode
 function cost(exp, opt::Optimizer)
@@ -102,7 +101,6 @@ function get_sweet_spot(opt::Optimizer)
         TargetFitness)
     for exp in Iterators.drop(opt.exps, 1)
         ss::typeof(opt.initials) = best_candidate(res)
-        #SearchRange = [refine_interval(sr, ss, opt.refinefactor) for (sr, ss) in zip(SearchRange, ss)]
         println("Sweet spot:", ss)
         println("SearchRange:", SearchRange)
         res = bboptimize(cost(exp, opt), ss; SearchRange, NumDimensions,

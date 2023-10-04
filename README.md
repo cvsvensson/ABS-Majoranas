@@ -5,6 +5,8 @@ This code base is using the [Julia Language](https://julialang.org/) and
 to make a reproducible scientific project named
 > ABS-Majoranas
 
+This code is used for the calculations and plots in the paper **A minimal quantum-dot-based Kitaev chain with only local superconducting proximity effect** by William Samuelson, Viktor Svensson, and Martin Leijnse.
+
 To (locally) reproduce this project, do the following:
 
 0. Download this code base. Notice that raw data are typically not included in the
@@ -16,7 +18,7 @@ To (locally) reproduce this project, do the following:
    julia> Pkg.activate("path/to/this/project")
    julia> Pkg.instantiate()
    ```
-
+s
 This will install all necessary packages for you to be able to run the scripts and
 everything should work out of the box, including correctly finding local paths.
 
@@ -26,3 +28,5 @@ using DrWatson
 @quickactivate "ABS-Majoranas"
 ```
 which auto-activate the project and enable local path handling from DrWatson.
+
+Little effort has been made to make this user friendly. If you have any questions, contact Viktor Svensson.

@@ -1,3 +1,4 @@
+#This script produces plots to show the parameters of the sweet spot.
 using DrWatson
 @quickactivate "Majorana sweet spot"
 includet(srcdir("abs_chain_misc.jl"))
@@ -55,11 +56,11 @@ hideydecorations!(ax2_1)
 hideydecorations!(ax3_1)
 hidexdecorations!.((ax1_1, ax2_1, ax3_1))
 
-ax1_2 = Axis(gp[2, 1]; ylabel=ylabel2, aspect, tellwidth, yticks=0:1:1)#, alignmode=alignmodeax)
+ax1_2 = Axis(gp[2, 1]; ylabel=ylabel2, aspect, tellwidth, yticks=0:1:1)
 hm = heatmap!(ax1_2, x2, y2, ϕs2; colorrange=cr1, colormap, tellwidth)
-ax2_2 = Axis(gp[2, 2]; xlabel = xlabel2, aspect, tellwidth)#, alignmode=alignmodeax)
+ax2_2 = Axis(gp[2, 2]; xlabel=xlabel2, aspect, tellwidth)
 hm = heatmap!(ax2_2, x2, y2, -mu1s2; colorrange=cr2, colormap)
-ax3_2 = Axis(gp[2, 3]; aspect, tellwidth)#, alignmode=alignmodeax)
+ax3_2 = Axis(gp[2, 3]; aspect, tellwidth)
 hm = heatmap!(ax3_2, x2, y2, -mu2s2; colorrange=cr3, colormap)
 hideydecorations!(ax2_2)
 hideydecorations!(ax3_2)

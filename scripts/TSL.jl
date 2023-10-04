@@ -1,4 +1,4 @@
-
+#This file contains calculations to reproduce some results from arXiv:2207.06160, and compare sweet spots with the ABS model.
 using DrWatson
 @quickactivate "Majorana sweet spot"
 includet(srcdir("abs_chain_misc.jl"))
@@ -10,7 +10,7 @@ d = FermionBasis((:L, :C, :R), (:↑, :↓); qn=QuantumDots.parity)
 t = 0.5Δ
 tsoc = 0.2t
 U = 5Δ
-h = 1.5Δ / 2
+h = 1.5Δ
 ##
 transport = Transport(QuantumDots.Pauli(), (; T=1 / 40, μ=(0.0, 0.0), Γ=1))
 params = (; Δ, U, t, tsoc, h)
@@ -55,39 +55,41 @@ heatmap!(fig2ax1, μCs, μs, map(ss -> (ss.gap), fig2data); colormap=:redsblues,
 heatmap!(fig2ax2, μCs, μs, map(ss -> ss.mps.left.mpu, fig2data); colormap=:viridis, colorrange=(0, 1))
 fig2
 ## Add in optimized sweet spot
-includet(srcdir("abs_chain_misc.jl"))
-params_abs, params_tsl = let Δ = 1.0, tratio = 0.2, t, h
-    h = 1.25Δ
-    t = 0.5Δ
-    t2 = t*1.2
-    U = 1Δ
-    (; Δ, U, t, tratio=0.2, h, V=0),
-    (; Δ, U, t = t2, tsoc=t2 * tratio, h)
+tsl_ham(μG, μC; params) = blockdiagonal(QuantumDots.TSL_hamiltonian(d; params..., μC, μL=μG, μR=μG), d)
+abs_ham(μ1, μ2, δϕ; params) = abs_hamiltonian(c; μ1, μ2, ϕ=δϕ, params...)
+function cost(x; params, ham, basis, P)
+    sol = solve(ham(x...; params); basis)
+    P * abs2(sol.gap) + MPU(sol)
 end
-tsl_ham(μG, μC) = blockdiagonal(QuantumDots.TSL_hamiltonian(d; params_tsl..., μC, μL=μG, μR=μG), d)
-abs_ham(μ1, μ2, δϕ) = abs_hamiltonian(c; μ1, μ2, ϕ=δϕ, params_abs...)
-function cost(x; ham, basis, P)
-    sol = solve(ham(x...); basis)
-    P * abs2(sol.gap) + MP(sol)
-end
-tsl_cost(x; P) = cost(x; ham=tsl_ham, basis=d, P)
-abs_cost(x; P) = cost(x; ham=abs_ham, basis=c, P)
-
+tsl_cost(x; params, P) = cost(x; params, ham=tsl_ham, basis=d, P)
+abs_cost(x; params, P) = cost(x; params, ham=abs_ham, basis=c, P)
 ##
-optparams = (;  MaxTime=5, TargetFitness=1e-6)
-tsl_opt = bboptimize(x -> tsl_cost(x; P=1e3); SearchRange = [(-5,5),(-5,5)], NumDimensions=2, optparams...)
-abs_opt = bboptimize(x -> abs_cost(x; P=1e3), [4,-4, pi/2];  SearchRange = [(0,20),(-20,0),(0,pi)], NumDimensions=3, optparams...)
+tsl_opt = bboptimize(x -> tsl_cost(x; params, P=1e3); SearchRange=[(-2, 2), (-2, 2)], NumDimensions=2, optparams...)
+tsl_ss = best_candidate(tsl_opt)
+tsl_sol = solve(tsl_ham(tsl_ss...; params=params_tsl); basis=d)
+##
+scatter!(fig2ax1, [tsl_ss[2]], [tsl_ss[1]])
+scatter!(fig2ax2, [tsl_ss[2]], [tsl_ss[1]])
+fig2
+
+## Compare models
+params_abs, params_tsl = let Δ = 1.0, tratio = 0.2, t, h
+    h = 1.5Δ
+    t = 0.5Δ
+    t2 = t * 1.25
+    U = 2Δ
+    (; Δ, U, t, tratio=0.2, h, V=0.3Δ),
+    (; Δ, U, t=t2, tsoc=t2 * tratio, h)
+end
+optparams = (; MaxTime=5, TargetFitness=1e-6)
+tsl_opt = bboptimize(x -> tsl_cost(x; params=params_tsl, P=1e3); SearchRange=[(-2, 2), (-2, 2)], NumDimensions=2, optparams...)
+abs_opt = bboptimize(x -> abs_cost(x; params=params_abs, P=1e3), [4, -4, pi / 2]; SearchRange=[(0, 20), (-20, 0), (0, pi)], NumDimensions=3, optparams...)
 tsl_ss = best_candidate(tsl_opt)
 abs_ss = best_candidate(abs_opt)
-tsl_ss = solve(tsl_ham(tsl_ss...); basis=d)
-abs_ss = solve(abs_ham(abs_ss...); basis=c)
-excgap(tsl_ss.energies...)
-excgap(abs_ss.energies...)
-Dict(pairs(tsl_ss))
-Dict(pairs(abs_ss))
-
-
+tsl_sol = solve(tsl_ham(tsl_ss...; params=params_tsl); basis=d)
+abs_sol = solve(abs_ham(abs_ss...; params=params_abs); basis=c)
 ##
-scatter!(fig2ax1, [ss[2]], [ss[1]])
-scatter!(fig2ax2, [ss[2]], [ss[1]])
-fig2
+excgap(tsl_sol.energies...)
+excgap(abs_sol.energies...)
+Dict(pairs(tsl_sol))
+Dict(pairs(abs_sol))

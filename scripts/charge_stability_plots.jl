@@ -1,17 +1,12 @@
+#This script produces the charge stability plot for the paper.
 using DrWatson
 @quickactivate "ABS-Majoranas"
 includet(srcdir("abs_chain_misc.jl"))
 includet(srcdir("plotting.jl"))
 
-using DataFrames
-# resultsUVap = collect_results(datadir("UV-scan", "anti_parallel", "final"))
-# resultsUhap = collect_results(datadir("Uh-scan", "anti_parallel", "final"))
-# resultUV = combine_results(resultsUVap)
-# resultUh = combine_results(resultsUhap)
-
 ##
-bigres = 600
-smallres = 400
+bigres = 300
+smallres = 200
 ssparams = (Δ=1, tratio=0.2, h=1.25, U=2.5, V=0.1, t=0.5, ϕ=2.083212845624367, μ1=3.5010504669947298, μ2=-0.801050470769927)
 paramstring = map(x -> round(x, digits=2), ssparams)
 μ0 = (ssparams.μ1 + ssparams.μ2) / 2
@@ -19,16 +14,7 @@ csdata_big = charge_stability_scan((; ssparams..., μ1=μ0, μ2=μ0), 10, 10, bi
 ϕs = ssparams.ϕ .+ [-pi / 2, 0, pi / 2]
 csdata_small = [charge_stability_scan((; ssparams..., ϕ), 1.5, 1.5, smallres) for ϕ in ϕs]
 
-## 
-labels = collect(keys(csdata_big[:data][1].majcoeffs[1]))
-for lab in labels
-    heatmap(map(x -> 1 - x.vacuumnorms.odd[lab], csdata_big[:data]),
-        colorrange=(0, 1), axis=(; subtitle="$lab in odd vacuum")) |> display
-end
-for lab in labels
-    heatmap(map(x -> 1 - x.vacuumnorms.even[lab], csdata_big[:data]),
-        colorrange=(0, 1), axis=(; subtitle="$lab in even vacuum")) |> display
-end
+
 ## Horizontal fig
 f = Figure(resolution=400 .* (1, 0.9), fontsize=20, backgroundcolor=:transparent);
 f = Figure(resolution=400 .* (1, 0.9), fontsize=20, backgroundcolor=:white);
@@ -38,7 +24,7 @@ gs = g[1, 2] = GridLayout()
 
 
 datamap = x -> sign(x.gap)
-ax = Axis(gb[1, 1], xlabel=paramstyle[:μ1], ylabel=paramstyle[:μ2], aspect=1)#,  subtitle = L"\tanh{\left(δE\right)}")
+ax = Axis(gb[1, 1], xlabel=paramstyle[:μ1], ylabel=paramstyle[:μ2], aspect=1)
 hm = plot_charge_stability!(ax, csdata_big; colorrange=(-1, 1), datamap=x -> tanh(x.gap), colormap=Reverse(:redsblues))
 cb = Colorbar(gb[2, 1], hm; valign=:top, vertical=false, label=L"\tanh{(δE)}", flipaxis=true, labelpadding=-20, ticks=[-1, 1], height=12
 )
@@ -65,6 +51,7 @@ ax.yticks = -6:3:10
 ax.xticklabelspace = 15.0
 ax.yticklabelspace = 5.0
 [Label(gs[n, 1, Bottom()], L"\delta ϕ %$s \delta ϕ_\star", padding=(0, 0, -5, 2)) for (n, s) in enumerate(["<", "=", ">"])]
+# [Label(gs[n, 1, Bottom()], s, padding=(0, 0, -5, 2)) for (n, s) in enumerate([L"\delta\phi_\star-\pi/2", L"\delta\phi_\star", L"\delta\phi_\star+\pi/2"])]
 
 
 elems = [PolyElement(color=cgrad(:berlin)[1], strokewidth=1),
@@ -83,16 +70,13 @@ Label(gs[1, 1, TopLeft()], L"b)", padding=(0, 15, 0, -5), tellheight=false, tell
 Label(gb[2, 1, BottomLeft()], L"\text{Odd}", padding=(125, 0, -28, 0), tellheight=false, tellwidth=false)
 Label(gb[2, 1, BottomRight()], L"\text{Even}", padding=(-95, 0, -28, 0), tellheight=false, tellwidth=false)
 
-function spinlabel(l1,l2)
-    string("(",l1,",",l2,")")
-    # latexstring("{(",l1,",",l2,")}")
-    #l1 * "\n" * l2
+function spinlabel(l1, l2)
+    string("(", l1, ",", l2, ")")
 end
 
 for (point, label) in zip(Base.product(range(-4.9, 2.4, 3), range(-5.8, 2.2, 3)),
     Base.product(["↓↑", "↓", "0"], ["↓↑", "↓", "0"]))
-    # Base.product(["\\downarrow\\uparrow", "\\downarrow", "0"], ["\\downarrow\\uparrow", "\\downarrow", "0"]))
-    text!(ax,spinlabel(label...), fontsize=15, font=:bold, color=:yellow, position=point, align=(:center, :bottom))
+    text!(ax, spinlabel(label...), fontsize=15, font=:bold, color=:yellow, position=point, align=(:center, :bottom))
 end
 f |> display
 ##

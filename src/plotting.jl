@@ -49,7 +49,7 @@ function plot_charge_stability!(f, data; kwargs...)
     hm = plot_charge_stability!(ax, data; kwargs...)
     return ax, hm
 end
-function plot_charge_stability!(ax::Axis, data; datamap=x -> x.gap, colormap=:berlin, kwargs...)
+function plot_charge_stability!(ax::Axis, data; datamap=x -> x.gap, colormap=Reverse(:redsblues), kwargs...)
     x = data[:ϵ1]
     y = data[:ϵ2]
     gaps = map(datamap, data[:data])

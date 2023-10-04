@@ -1,3 +1,4 @@
+#This script was used to determine that :probabilistic_descent works best for our problem.
 using DrWatson
 @quickactivate "Majorana sweet spot"
 includet(srcdir("abs_chain_misc.jl"))
@@ -36,8 +37,6 @@ end
 ##
 
 exps = collect(range(0.5, 3, 4))
-PopulationSize = 50
-ϵ = 0.05
 target = MPU
 MaxTime = 2
 
@@ -47,11 +46,11 @@ extra_cost((ϕ, μ1, μ2), e) = exp(-(e * abs(μ1 - μ2) + 1)^4) + e * (μ2 > μ
 function cf(args)
     sol = solve(hamfunc(args...))
     exp = 3
-    cost_function(sol.energies, MPU(sol); exp, minexcgap = 0) + extra_cost(args, exp)
+    cost_function(sol.energies, MPU(sol); exp, minexcgap=0) + extra_cost(args, exp)
 end
 co = compare_optimizers(cf;
-        SearchRange = [(0.0,1.0pi), (0,10), (-10,0)], NumDimensions=3,MaxTime=1, TraceInterval=10.0,
-        TraceMode=:silent)
+    SearchRange=[(0.0, 1.0pi), (0, 10), (-10, 0)], NumDimensions=3, MaxTime=1, TraceInterval=10.0,
+    TraceMode=:silent)
 co
 
 Methods = [:dxnes, :xnes, :de_rand_1_bin_radiuslimited, :adaptive_de_rand_1_bin_radiuslimited, :generating_set_search, :adaptive_de_rand_1_bin, :separable_nes, :probabilistic_descent, :resampling_memetic_search, :resampling_inheritance_memetic_search]
@@ -62,13 +61,13 @@ map(LD, ss)
 map(x -> x.gap, ss)
 barplot(eachindex(Methods), map(MPU, ss); axis)
 barplot(eachindex(Methods), map(LD, ss); axis)
-barplot(eachindex(Methods), map(x -> log(abs(x.gap)),ss); axis)
+barplot(eachindex(Methods), map(x -> log(abs(x.gap)), ss); axis)
 barplot(eachindex(Methods), map(MPU, ss2); axis)
 barplot(eachindex(Methods), map(LD, ss2); axis)
-barplot(eachindex(Methods), map(x -> log(abs(x.gap)),ss2); axis)
+barplot(eachindex(Methods), map(x -> log(abs(x.gap)), ss2); axis)
 let ss = ss2
     axis = (; xticks=(eachindex(Methods), string.(Methods)), xticklabelrotation=pi / 4)
     barplot(eachindex(Methods), map(MPU, ss); axis) |> display
     barplot(eachindex(Methods), map(LD, ss); axis) |> display
-    barplot(eachindex(Methods), map(x -> log(abs(x.gap)),ss); axis) |> display
+    barplot(eachindex(Methods), map(x -> log(abs(x.gap)), ss); axis) |> display
 end
