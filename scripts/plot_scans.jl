@@ -138,7 +138,7 @@ f |> display
 save(plotsdir(string("uvplot", fixedparamstring, ".png")), f, px_per_unit=4)
 
 ##
-data = resultsUV1[2, :]
+data = resultsUh
 fgap = Figure(; resolution=400 .* (1.4, 1), fontsize=20, backgroundcolor=:white);
 grid = fgap[1, 1] = GridLayout()
 ax, hm = heatmap(grid[1, 1], data[:x], data[:y], map(x -> log10(abs(x.gap)), data[:sweet_spots]),
