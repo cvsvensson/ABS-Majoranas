@@ -36,6 +36,20 @@ function half_majorana_polarizations(majcoeffs, basis)
     right = QuantumDots.majorana_polarization(majcoeffs..., keysR)
     return (; left, right)
 end
+function dsolve(hamfunc::Function, parameters; dp, kwargs...)
+    p1 = parameters
+    # Add dp to parameters, matching the keys
+    p2 = NamedTuple(map((kv) -> kv[1] => get(dp, kv[1], 0.0) + kv[2], collect(pairs(p1))))
+    # p2 = merge(parameters, dp)
+    dh = norm(values(dp))
+    sol1 = solve(hamfunc(p1); kwargs...)
+    sol2 = solve(hamfunc(p2); kwargs...)
+    ntdiff(nt1, nt2) = map(ntdiff, nt1, nt2)
+    ntdiff(::Missing, ::Missing) = missing
+    ntdiff(nt1::Number, nt2::Number) = (nt1 - nt2) / dh
+    dsol = map(ntdiff, sol2, sol1)
+    return (; sol1, sol2, dh, p1, p2, dsol)
+end
 function solve(H; basis=c, reduced=true, transport=missing)
     eig = QuantumDots.diagonalize(H)
     sectors = blocks(eig)
@@ -74,7 +88,7 @@ Base.@kwdef struct Optimizer{f,r,i,t,ec}
 end
 
 LD(sol) = norm(sol.reduced.cells)^2
-MP(sol) = 1 - (abs(sol.mps.left.mp) + abs(sol.mps.right.mp)) / 2 
+MP(sol) = 1 - (abs(sol.mps.left.mp) + abs(sol.mps.right.mp)) / 2
 MPU(sol) = 1 - (abs(sol.mps.left.mpu) + abs(sol.mps.right.mpu)) / 2
 
 tracemode(opt::Optimizer) = opt.tracemode
@@ -138,12 +152,12 @@ function parallel_sweet_spot(; Δ, tratio, h, U, V, t, MaxTime, exps=collect(ran
     fixedparams = (; Δ, tratio, h, U, V, t)
     μ1, μ2 = kitaev_μ_zero(Δ, h, U)
     μi = lower ? μ2 : μ1
-    μrange = lower ? (-2abs(h) - U-1, U + V) : (0.0, 1.1 * abs(μi) + abs(h) + U)
+    μrange = lower ? (-2abs(h) - U - 1, U + V) : (0.0, 1.1 * abs(μi) + abs(h) + U)
     hamfunc(ϕ, μ) = abs_hamiltonian(c; μ1=μ, μ2=μ, ϕ, fixedparams...)
     opt = Optimizer(;
         hamfunc,
         ranges=[(0.0, 1.0π), μrange],
-        initials=Float64.([pi/2, μi]),
+        initials=Float64.([pi / 2, μi]),
         MaxTime, exps, target,
         tracemode=:silent,
         kwargs...)
@@ -190,3 +204,4 @@ end
 
 ## Kitaev parameters
 kitaev_μ_zero(Δ, h, U) = @. U / 2 + (1, -1) * (sqrt(abs(-4Δ^2 + U^2 + 4h * U + 4h^2)) / 2)
+
