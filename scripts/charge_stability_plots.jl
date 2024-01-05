@@ -44,7 +44,7 @@ ylims!(minimum(csdata_big[:ϵ2]), maximum(csdata_big[:ϵ2]))
 
 spinecolor = NamedTuple(map(x -> x => linecolor, [:bottomspinecolor, :leftspinecolor, :topspinecolor, :rightspinecolor]))
 small_axes = [Axis(gs[n, 1]; spinecolor..., spinewidth=linewidth, aspect=1) for (n, ϕ) in enumerate(ϕs)] #subtitle = L"ϕ=%$(round(ϕ,digits=2))" 
-foreach((ax, data) -> plot_charge_stability!(ax, data; datamap), small_axes, csdata_small)
+foreach((ax, data) -> plot_charge_stability!(ax, data; datamap, colormap = cgrad(:berlin)), small_axes, csdata_small)
 hidedecorations!.(small_axes)
 ax.xticks = -6:3:10
 ax.yticks = -6:3:10
@@ -75,7 +75,7 @@ function spinlabel(l1, l2)
 end
 
 for (point, label) in zip(Base.product(range(-4.9, 2.4, 3), range(-5.8, 2.2, 3)),
-    Base.product(["↓↑", "↓", "0"], ["↓↑", "↓", "0"]))
+    Base.product(["↓↑", "↑", "0"], ["↓↑", "↑", "0"]))
     text!(ax, spinlabel(label...), fontsize=15, font=:bold, color=:yellow, position=point, align=(:center, :bottom))
 end
 f |> display
